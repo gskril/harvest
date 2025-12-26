@@ -1,4 +1,4 @@
-# Harvest DApp
+# Harvest
 
 A single page application for interacting with the Harvest smart contract. Users can connect their Ethereum wallet, view their tokens and NFTs, and sell them to the Harvest contract for 1 gwei each.
 

@@ -1,9 +1,29 @@
-import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { getChains } from '@/config/chains';
+import { connectorsForWallets } from '@rainbow-me/rainbowkit'
+import { getChains } from '@/config/chains'
+import { createConfig, http } from 'wagmi'
+import {
+  rainbowWallet,
+  walletConnectWallet,
+} from '@rainbow-me/rainbowkit/wallets'
+import { getAlchemyBaseUrl } from './lib/alchemy'
 
-export const config = getDefaultConfig({
-  appName: 'Harvest DApp',
-  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: 'Popular',
+      wallets: [rainbowWallet, walletConnectWallet],
+    },
+  ],
+  {
+    appName: 'Harvest',
+    projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID,
+  }
+)
+
+export const config = createConfig({
   chains: getChains(),
-  ssr: false,
-});
+  connectors,
+  transports: Object.fromEntries(
+    getChains().map(({ id }) => [id, http(getAlchemyBaseUrl(id))])
+  ),
+})

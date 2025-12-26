@@ -1,26 +1,26 @@
-import { mainnet, base, sepolia, polygon, arbitrum, optimism } from 'wagmi/chains';
-import type { Chain } from 'wagmi/chains';
+import { mainnet, base } from 'wagmi/chains'
+import type { Chain } from 'wagmi/chains'
 
 /**
  * Chain configuration for the Harvest DApp.
- * 
+ *
  * To add a new chain:
  * 1. Import the chain from 'wagmi/chains'
  * 2. Add an entry to SUPPORTED_CHAINS with the chain config
- * 
+ *
  * The Harvest contract is deployed at the same address on all chains:
  * 0x88bcea869a1aaa637d2d53be744172ab601c5e03
  */
 
 export interface ChainConfig {
   /** The wagmi chain object */
-  chain: Chain;
+  chain: Chain
   /** Alchemy network identifier for API calls */
-  alchemyNetwork: string;
+  alchemyNetwork: string
   /** Block explorer URL */
-  blockExplorer: string;
+  blockExplorer: string
   /** Whether Harvest contract is deployed on this chain */
-  harvestDeployed: boolean;
+  harvestDeployed: boolean
 }
 
 /**
@@ -42,65 +42,37 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     blockExplorer: 'https://basescan.org',
     harvestDeployed: true,
   },
-  // Sepolia Testnet
-  [sepolia.id]: {
-    chain: sepolia,
-    alchemyNetwork: 'eth-sepolia',
-    blockExplorer: 'https://sepolia.etherscan.io',
-    harvestDeployed: false,
-  },
-  // Polygon
-  [polygon.id]: {
-    chain: polygon,
-    alchemyNetwork: 'polygon-mainnet',
-    blockExplorer: 'https://polygonscan.com',
-    harvestDeployed: false,
-  },
-  // Arbitrum
-  [arbitrum.id]: {
-    chain: arbitrum,
-    alchemyNetwork: 'arb-mainnet',
-    blockExplorer: 'https://arbiscan.io',
-    harvestDeployed: false,
-  },
-  // Optimism
-  [optimism.id]: {
-    chain: optimism,
-    alchemyNetwork: 'opt-mainnet',
-    blockExplorer: 'https://optimistic.etherscan.io',
-    harvestDeployed: false,
-  },
-};
+} as const
 
 /** Get all wagmi chain objects */
 export const getChains = (): [Chain, ...Chain[]] => {
-  const chains = Object.values(SUPPORTED_CHAINS).map((c) => c.chain);
-  return chains as [Chain, ...Chain[]];
-};
+  const chains = Object.values(SUPPORTED_CHAINS).map((c) => c.chain)
+  return chains as [Chain, ...Chain[]]
+}
 
 /** Get chains where Harvest is deployed */
 export const getHarvestChains = (): Chain[] => {
   return Object.values(SUPPORTED_CHAINS)
     .filter((c) => c.harvestDeployed)
-    .map((c) => c.chain);
-};
+    .map((c) => c.chain)
+}
 
 /** Get chain config by chain ID */
 export const getChainConfig = (chainId: number): ChainConfig | undefined => {
-  return SUPPORTED_CHAINS[chainId];
-};
+  return SUPPORTED_CHAINS[chainId]
+}
 
 /** Get Alchemy network name for a chain ID */
 export const getAlchemyNetwork = (chainId: number): string => {
-  return SUPPORTED_CHAINS[chainId]?.alchemyNetwork || 'eth-mainnet';
-};
+  return SUPPORTED_CHAINS[chainId]?.alchemyNetwork || 'eth-mainnet'
+}
 
 /** Get block explorer URL for a chain ID */
 export const getBlockExplorer = (chainId: number): string => {
-  return SUPPORTED_CHAINS[chainId]?.blockExplorer || 'https://etherscan.io';
-};
+  return SUPPORTED_CHAINS[chainId]?.blockExplorer || 'https://etherscan.io'
+}
 
 /** Check if Harvest is deployed on a chain */
 export const isHarvestDeployed = (chainId: number): boolean => {
-  return SUPPORTED_CHAINS[chainId]?.harvestDeployed ?? false;
-};
+  return SUPPORTED_CHAINS[chainId]?.harvestDeployed ?? false
+}

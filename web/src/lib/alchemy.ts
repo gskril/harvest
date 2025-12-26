@@ -63,7 +63,7 @@ export interface AlchemyNFTsResponse {
 
 const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY || '';
 
-const getAlchemyBaseUrl = (chainId: number): string => {
+export const getAlchemyBaseUrl = (chainId: number): string => {
   const network = getAlchemyNetwork(chainId);
   return `https://${network}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 };

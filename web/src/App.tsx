@@ -1,13 +1,13 @@
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TokenList } from '@/components/TokenList';
-import { NFTList } from '@/components/NFTList';
-import { HarvestInfo } from '@/components/HarvestInfo';
-import { Coins, ImageIcon, Wheat } from 'lucide-react';
+import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { useAccount } from 'wagmi'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TokenList } from '@/components/TokenList'
+import { NFTList } from '@/components/NFTList'
+import { HarvestInfo } from '@/components/HarvestInfo'
+import { Coins, ImageIcon, Wheat } from 'lucide-react'
 
 function App() {
-  const { isConnected } = useAccount();
+  const { isConnected } = useAccount()
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,7 +29,8 @@ function App() {
             <Wheat className="w-24 h-24 text-primary mb-6" />
             <h2 className="text-3xl font-bold mb-4">Welcome to Harvest</h2>
             <p className="text-muted-foreground mb-8 max-w-md">
-              Connect your wallet to view your tokens and NFTs. Sell unwanted assets to the Harvest contract for 1 gwei each.
+              Connect your wallet to view your tokens and NFTs. Sell unwanted
+              assets to the Harvest contract for 1 gwei each.
             </p>
             <ConnectButton />
           </div>
@@ -44,7 +45,10 @@ function App() {
             <div className="lg:col-span-2">
               <Tabs defaultValue="tokens" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="tokens" className="flex items-center gap-2">
+                  <TabsTrigger
+                    value="tokens"
+                    className="flex items-center gap-2"
+                  >
                     <Coins className="w-4 h-4" />
                     Tokens
                   </TabsTrigger>
@@ -69,12 +73,12 @@ function App() {
       <footer className="border-t mt-auto">
         <div className="container flex h-16 items-center justify-center px-4">
           <p className="text-sm text-muted-foreground">
-            Harvest DApp - Sell your tokens for 1 gwei each
+            Harvest - Sell your tokens for 1 gwei each
           </p>
         </div>
       </footer>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
