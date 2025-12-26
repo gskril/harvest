@@ -234,5 +234,5 @@ export const ERC1155_ABI = [
   },
 ] as const;
 
-// Default Harvest contract address (should be replaced with actual deployed address)
-export const HARVEST_ADDRESS = import.meta.env.VITE_HARVEST_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000000';
+// Harvest contract address deployed on Ethereum Mainnet
+export const HARVEST_ADDRESS: `0x${string}` = import.meta.env.VITE_HARVEST_ADDRESS as `0x${string}` || '0x88bcea869a1aaa637d2d53be744172ab601c5e03';
