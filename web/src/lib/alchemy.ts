@@ -1,4 +1,5 @@
 // Alchemy API Types and Helpers
+import { getAlchemyNetwork } from '@/config/chains';
 
 export interface AlchemyToken {
   contractAddress: string;
@@ -63,28 +64,12 @@ export interface AlchemyNFTsResponse {
 const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY || '';
 
 const getAlchemyBaseUrl = (chainId: number): string => {
-  const networks: Record<number, string> = {
-    1: 'eth-mainnet',
-    11155111: 'eth-sepolia',
-    137: 'polygon-mainnet',
-    42161: 'arb-mainnet',
-    10: 'opt-mainnet',
-    8453: 'base-mainnet',
-  };
-  const network = networks[chainId] || 'eth-mainnet';
+  const network = getAlchemyNetwork(chainId);
   return `https://${network}.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 };
 
 const getNftApiBaseUrl = (chainId: number): string => {
-  const networks: Record<number, string> = {
-    1: 'eth-mainnet',
-    11155111: 'eth-sepolia',
-    137: 'polygon-mainnet',
-    42161: 'arb-mainnet',
-    10: 'opt-mainnet',
-    8453: 'base-mainnet',
-  };
-  const network = networks[chainId] || 'eth-mainnet';
+  const network = getAlchemyNetwork(chainId);
   return `https://${network}.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`;
 };
 

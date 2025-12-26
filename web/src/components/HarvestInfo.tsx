@@ -2,17 +2,9 @@ import { useBalance, useChainId } from 'wagmi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HARVEST_ADDRESS } from '@/contracts/harvest';
-import { Wallet, ExternalLink } from 'lucide-react';
+import { getBlockExplorer, isHarvestDeployed, getChainConfig } from '@/config/chains';
+import { Wallet, ExternalLink, AlertTriangle } from 'lucide-react';
 import { formatEther } from 'viem';
-
-const BLOCK_EXPLORERS: Record<number, string> = {
-  1: 'https://etherscan.io',
-  11155111: 'https://sepolia.etherscan.io',
-  137: 'https://polygonscan.com',
-  42161: 'https://arbiscan.io',
-  10: 'https://optimistic.etherscan.io',
-  8453: 'https://basescan.org',
-};
 
 export function HarvestInfo() {
   const chainId = useChainId();
@@ -20,10 +12,10 @@ export function HarvestInfo() {
     address: HARVEST_ADDRESS,
   });
 
-  const explorerUrl = BLOCK_EXPLORERS[chainId] || BLOCK_EXPLORERS[1];
+  const explorerUrl = getBlockExplorer(chainId);
   const contractUrl = `${explorerUrl}/address/${HARVEST_ADDRESS}`;
-
-  const isValidAddress = HARVEST_ADDRESS !== '0x0000000000000000000000000000000000000000';
+  const chainConfig = getChainConfig(chainId);
+  const isDeployed = isHarvestDeployed(chainId);
 
   return (
     <Card>
@@ -38,30 +30,43 @@ export function HarvestInfo() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
+          {!isDeployed && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-destructive">Not deployed on {chainConfig?.chain.name}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Please switch to Ethereum or Base to use Harvest
+                </p>
+              </div>
+            </div>
+          )}
+
           <div>
             <p className="text-sm text-muted-foreground mb-1">Contract Address</p>
-            {isValidAddress ? (
-              <a
-                href={contractUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm font-mono text-primary hover:underline"
-              >
-                {HARVEST_ADDRESS.slice(0, 6)}...{HARVEST_ADDRESS.slice(-4)}
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            ) : (
-              <p className="text-sm text-destructive">
-                Not configured - Set VITE_HARVEST_ADDRESS in .env
-              </p>
-            )}
+            <a
+              href={contractUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm font-mono text-primary hover:underline"
+            >
+              {HARVEST_ADDRESS.slice(0, 6)}...{HARVEST_ADDRESS.slice(-4)}
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
 
           <div>
             <p className="text-sm text-muted-foreground mb-1">Contract Balance</p>
             <p className="text-lg font-semibold">
-              {balance ? formatEther(balance.value) : '0'} ETH
+              {balance ? formatEther(balance.value) : '0'} {chainConfig?.chain.nativeCurrency.symbol || 'ETH'}
             </p>
+          </div>
+
+          <div>
+            <p className="text-sm text-muted-foreground mb-1">Current Network</p>
+            <Badge variant={isDeployed ? "default" : "secondary"}>
+              {chainConfig?.chain.name || 'Unknown'}
+            </Badge>
           </div>
 
           <div>

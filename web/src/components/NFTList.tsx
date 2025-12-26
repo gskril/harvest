@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNFTs } from '@/hooks/useNFTs';
 import { type AlchemyNFT } from '@/lib/alchemy';
 import { HARVEST_ABI, ERC721_ABI, ERC1155_ABI, HARVEST_ADDRESS } from '@/contracts/harvest';
-import { ImageIcon, RefreshCw, Send, Check, Loader2 } from 'lucide-react';
+import { isHarvestDeployed } from '@/config/chains';
+import { ImageIcon, RefreshCw, Send, Check, Loader2, AlertTriangle } from 'lucide-react';
 
 interface NFTItemProps {
   nft: AlchemyNFT;
@@ -100,6 +101,7 @@ export function NFTList() {
   const [sellingNFT, setSellingNFT] = useState<string | null>(null);
   const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle');
   const [pendingSell, setPendingSell] = useState<{ nft: AlchemyNFT; amount?: string } | null>(null);
+  const harvestDeployed = isHarvestDeployed(chainId);
 
   const { writeContract: writeApprove, data: approveHash } = useWriteContract();
   const { writeContract: writeSell, data: sellHash } = useWriteContract();
@@ -113,7 +115,7 @@ export function NFTList() {
   });
 
   const handleSell = async (nft: AlchemyNFT, amount?: string) => {
-    if (!address) return;
+    if (!address || !harvestDeployed) return;
 
     const nftKey = `${nft.contract.address}-${nft.tokenId}`;
     setSellingNFT(nftKey);
@@ -247,6 +249,25 @@ export function NFTList() {
             <p className="text-sm mt-2">
               Make sure you have the Alchemy API key configured
             </p>
+          </div>
+        ) : !harvestDeployed ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <p className="text-sm">Harvest is not deployed on this chain. Switch to Ethereum or Base to sell.</p>
+            </div>
+            <ScrollArea className="h-[350px] pr-4">
+              <div className="space-y-3 opacity-60">
+                {nfts.map((nft) => (
+                  <NFTItem
+                    key={`${nft.contract.address}-${nft.tokenId}`}
+                    nft={nft}
+                    onSell={() => {}}
+                    isSelling={false}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">

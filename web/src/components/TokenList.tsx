@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTokens } from '@/hooks/useTokens';
 import { formatTokenBalance, type AlchemyToken } from '@/lib/alchemy';
 import { HARVEST_ABI, ERC20_ABI, HARVEST_ADDRESS } from '@/contracts/harvest';
-import { Coins, RefreshCw, Send, Check, Loader2 } from 'lucide-react';
+import { isHarvestDeployed } from '@/config/chains';
+import { Coins, RefreshCw, Send, Check, Loader2, AlertTriangle } from 'lucide-react';
 
 interface TokenItemProps {
   token: AlchemyToken;
@@ -69,6 +70,7 @@ export function TokenList() {
   const chainId = useChainId();
   const [sellingToken, setSellingToken] = useState<string | null>(null);
   const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle');
+  const harvestDeployed = isHarvestDeployed(chainId);
 
   const { writeContract: writeApprove, data: approveHash } = useWriteContract();
   const { writeContract: writeSell, data: sellHash } = useWriteContract();
@@ -82,7 +84,7 @@ export function TokenList() {
   });
 
   const handleSell = async (token: AlchemyToken, amountStr: string) => {
-    if (!address || !amountStr) return;
+    if (!address || !amountStr || !harvestDeployed) return;
 
     const decimals = token.decimals || 18;
     const amount = parseUnits(amountStr, decimals);
@@ -187,6 +189,25 @@ export function TokenList() {
             <p className="text-sm mt-2">
               Make sure you have the Alchemy API key configured
             </p>
+          </div>
+        ) : !harvestDeployed ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <p className="text-sm">Harvest is not deployed on this chain. Switch to Ethereum or Base to sell.</p>
+            </div>
+            <ScrollArea className="h-[350px] pr-4">
+              <div className="space-y-3 opacity-60">
+                {tokens.map((token) => (
+                  <TokenItem
+                    key={token.contractAddress}
+                    token={token}
+                    onSell={() => {}}
+                    isSelling={false}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
