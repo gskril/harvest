@@ -1,63 +1,88 @@
-import { useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from 'wagmi';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useNFTs } from '@/hooks/useNFTs';
-import { type AlchemyNFT } from '@/lib/alchemy';
-import { HARVEST_ABI, ERC721_ABI, ERC1155_ABI, HARVEST_ADDRESS } from '@/contracts/harvest';
-import { isHarvestDeployed } from '@/config/chains';
-import { ImageIcon, RefreshCw, Send, Check, Loader2, AlertTriangle } from 'lucide-react';
+import { useState } from 'react'
+
+import {
+  AlertTriangle,
+  Check,
+  ImageIcon,
+  Loader2,
+  RefreshCw,
+  Send,
+} from 'lucide-react'
+import {
+  useAccount,
+  useChainId,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from 'wagmi'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Skeleton } from '@/components/ui/skeleton'
+import { isHarvestDeployed } from '@/config/chains'
+import {
+  ERC721_ABI,
+  ERC1155_ABI,
+  HARVEST_ABI,
+  HARVEST_ADDRESS,
+} from '@/contracts/harvest'
+import { useNFTs } from '@/hooks/useNFTs'
+import { type AlchemyNFT } from '@/lib/alchemy'
 
 interface NFTItemProps {
-  nft: AlchemyNFT;
-  onSell: (nft: AlchemyNFT, amount?: string) => void;
-  isSelling: boolean;
+  nft: AlchemyNFT
+  onSell: (nft: AlchemyNFT, amount?: string) => void
+  isSelling: boolean
 }
 
 function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
-  const [amount, setAmount] = useState('1');
-  const isERC1155 = nft.tokenType === 'ERC1155';
-  
-  const imageUrl = nft.image?.thumbnailUrl || 
-                   nft.image?.cachedUrl || 
-                   nft.image?.pngUrl ||
-                   nft.raw?.metadata?.image ||
-                   nft.contract.openSeaMetadata?.imageUrl;
+  const [amount, setAmount] = useState('1')
+  const isERC1155 = nft.tokenType === 'ERC1155'
 
-  const nftName = nft.name || 
-                  nft.raw?.metadata?.name || 
-                  `#${nft.tokenId}`;
+  const imageUrl =
+    nft.image?.thumbnailUrl ||
+    nft.image?.cachedUrl ||
+    nft.image?.pngUrl ||
+    nft.raw?.metadata?.image ||
+    nft.contract.openSeaMetadata?.imageUrl
 
-  const collectionName = nft.contract.name || 
-                         nft.contract.openSeaMetadata?.collectionName ||
-                         'Unknown Collection';
+  const nftName = nft.name || nft.raw?.metadata?.name || `#${nft.tokenId}`
+
+  const collectionName =
+    nft.contract.name ||
+    nft.contract.openSeaMetadata?.collectionName ||
+    'Unknown Collection'
 
   return (
-    <div className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
+    <div className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50">
       <div className="flex items-center gap-3">
         {imageUrl ? (
-          <img 
-            src={imageUrl} 
+          <img
+            src={imageUrl}
             alt={nftName}
-            className="w-16 h-16 rounded-lg object-cover"
+            className="h-16 w-16 rounded-lg object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
+              ;(e.target as HTMLImageElement).style.display = 'none'
             }}
           />
         ) : (
-          <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center">
-            <ImageIcon className="w-8 h-8 text-primary" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10">
+            <ImageIcon className="h-8 w-8 text-primary" />
           </div>
         )}
         <div>
           <p className="font-medium">{nftName}</p>
           <p className="text-sm text-muted-foreground">{collectionName}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant={isERC1155 ? "default" : "secondary"}>
+          <div className="mt-1 flex items-center gap-2">
+            <Badge variant={isERC1155 ? 'default' : 'secondary'}>
               {nft.tokenType}
             </Badge>
             {isERC1155 && nft.balance && (
@@ -80,47 +105,53 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
         <Button
           size="sm"
           onClick={() => onSell(nft, isERC1155 ? amount : undefined)}
-          disabled={isSelling || (isERC1155 && (!amount || parseInt(amount) < 1))}
+          disabled={
+            isSelling || (isERC1155 && (!amount || parseInt(amount) < 1))
+          }
         >
           {isSelling ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Send className="w-4 h-4" />
+            <Send className="h-4 w-4" />
           )}
           <span className="ml-2">Sell</span>
         </Button>
       </div>
     </div>
-  );
+  )
 }
 
 export function NFTList() {
-  const { nfts, isLoading, error, totalCount, refetch } = useNFTs();
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const [sellingNFT, setSellingNFT] = useState<string | null>(null);
-  const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle');
-  const [pendingSell, setPendingSell] = useState<{ nft: AlchemyNFT; amount?: string } | null>(null);
-  const harvestDeployed = isHarvestDeployed(chainId);
+  const { nfts, isLoading, error, totalCount, refetch } = useNFTs()
+  const { address } = useAccount()
+  const chainId = useChainId()
+  const [sellingNFT, setSellingNFT] = useState<string | null>(null)
+  const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle')
+  const [pendingSell, setPendingSell] = useState<{
+    nft: AlchemyNFT
+    amount?: string
+  } | null>(null)
+  const harvestDeployed = isHarvestDeployed(chainId)
 
-  const { writeContract: writeApprove, data: approveHash } = useWriteContract();
-  const { writeContract: writeSell, data: sellHash } = useWriteContract();
+  const { writeContract: writeApprove, data: approveHash } = useWriteContract()
+  const { writeContract: writeSell, data: sellHash } = useWriteContract()
 
   const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
-  });
+  })
 
-  const { isSuccess: isSellSuccess, isLoading: isSellLoading } = useWaitForTransactionReceipt({
-    hash: sellHash,
-  });
+  const { isSuccess: isSellSuccess, isLoading: isSellLoading } =
+    useWaitForTransactionReceipt({
+      hash: sellHash,
+    })
 
   const handleSell = async (nft: AlchemyNFT, amount?: string) => {
-    if (!address || !harvestDeployed) return;
+    if (!address || !harvestDeployed) return
 
-    const nftKey = `${nft.contract.address}-${nft.tokenId}`;
-    setSellingNFT(nftKey);
-    setStep('approving');
-    setPendingSell({ nft, amount });
+    const nftKey = `${nft.contract.address}-${nft.tokenId}`
+    setSellingNFT(nftKey)
+    setStep('approving')
+    setPendingSell({ nft, amount })
 
     try {
       if (nft.tokenType === 'ERC721') {
@@ -131,7 +162,7 @@ export function NFTList() {
           functionName: 'approve',
           args: [HARVEST_ADDRESS, BigInt(nft.tokenId)],
           chainId,
-        });
+        })
       } else {
         // For ERC1155, set approval for all
         writeApprove({
@@ -140,21 +171,21 @@ export function NFTList() {
           functionName: 'setApprovalForAll',
           args: [HARVEST_ADDRESS, true],
           chainId,
-        });
+        })
       }
     } catch (err) {
-      console.error('Error approving:', err);
-      setSellingNFT(null);
-      setStep('idle');
-      setPendingSell(null);
+      console.error('Error approving:', err)
+      setSellingNFT(null)
+      setStep('idle')
+      setPendingSell(null)
     }
-  };
+  }
 
   // When approval is successful, proceed to sell
   if (isApproveSuccess && step === 'approving' && pendingSell) {
-    const { nft, amount } = pendingSell;
-    setStep('selling');
-    
+    const { nft, amount } = pendingSell
+    setStep('selling')
+
     if (nft.tokenType === 'ERC721') {
       writeSell({
         address: HARVEST_ADDRESS,
@@ -162,7 +193,7 @@ export function NFTList() {
         functionName: 'sellErc721',
         args: [nft.contract.address as `0x${string}`, BigInt(nft.tokenId)],
         chainId,
-      });
+      })
     } else {
       writeSell({
         address: HARVEST_ADDRESS,
@@ -174,16 +205,16 @@ export function NFTList() {
           BigInt(amount || '1'),
         ],
         chainId,
-      });
+      })
     }
   }
 
   // Reset state when sell is successful
   if (isSellSuccess && step === 'selling') {
-    setSellingNFT(null);
-    setStep('idle');
-    setPendingSell(null);
-    refetch();
+    setSellingNFT(null)
+    setStep('idle')
+    setPendingSell(null)
+    refetch()
   }
 
   if (!address) {
@@ -191,13 +222,13 @@ export function NFTList() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ImageIcon className="w-5 h-5" />
+            <ImageIcon className="h-5 w-5" />
             NFTs
           </CardTitle>
           <CardDescription>Connect your wallet to view NFTs</CardDescription>
         </CardHeader>
       </Card>
-    );
+    )
   }
 
   return (
@@ -206,7 +237,7 @@ export function NFTList() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <ImageIcon className="w-5 h-5" />
+              <ImageIcon className="h-5 w-5" />
               NFTs
               {totalCount > 0 && (
                 <Badge variant="secondary">{totalCount}</Badge>
@@ -216,8 +247,15 @@ export function NFTList() {
               Sell your NFTs to the Harvest contract for 1 gwei each
             </CardDescription>
           </div>
-          <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+            />
           </Button>
         </div>
       </CardHeader>
@@ -225,8 +263,11 @@ export function NFTList() {
         {isLoading ? (
           <div className="grid grid-cols-1 gap-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 p-4 border rounded-lg">
-                <Skeleton className="w-16 h-16 rounded-lg" />
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg border p-4"
+              >
+                <Skeleton className="h-16 w-16 rounded-lg" />
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-24" />
@@ -236,25 +277,32 @@ export function NFTList() {
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-8 text-destructive">
+          <div className="py-8 text-center text-destructive">
             <p>Error loading NFTs: {error}</p>
-            <Button variant="outline" onClick={() => refetch()} className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              className="mt-4"
+            >
               Try Again
             </Button>
           </div>
         ) : nfts.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <div className="py-8 text-center text-muted-foreground">
+            <ImageIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
             <p>No NFTs found</p>
-            <p className="text-sm mt-2">
+            <p className="mt-2 text-sm">
               Make sure you have the Alchemy API key configured
             </p>
           </div>
         ) : !harvestDeployed ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              <p className="text-sm">Harvest is not deployed on this chain. Switch to Ethereum or Base to sell.</p>
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-sm">
+                Harvest is not deployed on this chain. Switch to Ethereum or
+                Base to sell.
+              </p>
             </div>
             <ScrollArea className="h-[350px] pr-4">
               <div className="space-y-3 opacity-60">
@@ -277,31 +325,33 @@ export function NFTList() {
                   key={`${nft.contract.address}-${nft.tokenId}`}
                   nft={nft}
                   onSell={handleSell}
-                  isSelling={sellingNFT === `${nft.contract.address}-${nft.tokenId}`}
+                  isSelling={
+                    sellingNFT === `${nft.contract.address}-${nft.tokenId}`
+                  }
                 />
               ))}
             </div>
           </ScrollArea>
         )}
-        
+
         {step !== 'idle' && (
-          <div className="mt-4 p-4 bg-muted rounded-lg">
+          <div className="mt-4 rounded-lg bg-muted p-4">
             <div className="flex items-center gap-2">
               {step === 'approving' && (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Approving NFT transfer...</span>
                 </>
               )}
               {step === 'selling' && !isSellLoading && (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Selling NFT...</span>
                 </>
               )}
               {isSellSuccess && (
                 <>
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="h-4 w-4 text-green-500" />
                   <span>NFT sold successfully!</span>
                 </>
               )}
@@ -310,5 +360,5 @@ export function NFTList() {
         )}
       </CardContent>
     </Card>
-  );
+  )
 }

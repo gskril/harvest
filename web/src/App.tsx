@@ -1,10 +1,11 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { useAccount } from 'wagmi'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { TokenList } from '@/components/TokenList'
-import { NFTList } from '@/components/NFTList'
-import { HarvestInfo } from '@/components/HarvestInfo'
 import { Coins, ImageIcon, Wheat } from 'lucide-react'
+import { useAccount } from 'wagmi'
+
+import { HarvestInfo } from '@/components/HarvestInfo'
+import { NFTList } from '@/components/NFTList'
+import { TokenList } from '@/components/TokenList'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 function App() {
   const { isConnected } = useAccount()
@@ -15,7 +16,7 @@ function App() {
       <header className="border-b">
         <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <Wheat className="w-8 h-8 text-primary" />
+            <Wheat className="h-8 w-8 text-primary" />
             <h1 className="text-xl font-bold">Harvest</h1>
           </div>
           <ConnectButton />
@@ -25,10 +26,10 @@ function App() {
       {/* Main Content */}
       <main className="container px-4 py-8">
         {!isConnected ? (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-            <Wheat className="w-24 h-24 text-primary mb-6" />
-            <h2 className="text-3xl font-bold mb-4">Welcome to Harvest</h2>
-            <p className="text-muted-foreground mb-8 max-w-md">
+          <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+            <Wheat className="mb-6 h-24 w-24 text-primary" />
+            <h2 className="mb-4 text-3xl font-bold">Welcome to Harvest</h2>
+            <p className="mb-8 max-w-md text-muted-foreground">
               Connect your wallet to view your tokens and NFTs. Sell unwanted
               assets to the Harvest contract for 1 gwei each.
             </p>
@@ -49,11 +50,11 @@ function App() {
                     value="tokens"
                     className="flex items-center gap-2"
                   >
-                    <Coins className="w-4 h-4" />
+                    <Coins className="h-4 w-4" />
                     Tokens
                   </TabsTrigger>
                   <TabsTrigger value="nfts" className="flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4" />
+                    <ImageIcon className="h-4 w-4" />
                     NFTs
                   </TabsTrigger>
                 </TabsList>
@@ -70,7 +71,7 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t mt-auto">
+      <footer className="mt-auto border-t">
         <div className="container flex h-16 items-center justify-center px-4">
           <p className="text-sm text-muted-foreground">
             Harvest - Sell your tokens for 1 gwei each

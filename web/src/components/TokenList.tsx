@@ -1,35 +1,62 @@
-import { useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from 'wagmi';
-import { parseUnits } from 'viem';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useTokens } from '@/hooks/useTokens';
-import { formatTokenBalance, type AlchemyToken } from '@/lib/alchemy';
-import { HARVEST_ABI, ERC20_ABI, HARVEST_ADDRESS } from '@/contracts/harvest';
-import { isHarvestDeployed } from '@/config/chains';
-import { Coins, RefreshCw, Send, Check, Loader2, AlertTriangle } from 'lucide-react';
+import { useState } from 'react'
+
+import {
+  AlertTriangle,
+  Check,
+  Coins,
+  Loader2,
+  RefreshCw,
+  Send,
+} from 'lucide-react'
+import { parseUnits } from 'viem'
+import {
+  useAccount,
+  useChainId,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from 'wagmi'
+
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Skeleton } from '@/components/ui/skeleton'
+import { isHarvestDeployed } from '@/config/chains'
+import { ERC20_ABI, HARVEST_ABI, HARVEST_ADDRESS } from '@/contracts/harvest'
+import { useTokens } from '@/hooks/useTokens'
+import { type AlchemyToken, formatTokenBalance } from '@/lib/alchemy'
 
 interface TokenItemProps {
-  token: AlchemyToken;
-  onSell: (token: AlchemyToken, amount: string) => void;
-  isSelling: boolean;
+  token: AlchemyToken
+  onSell: (token: AlchemyToken, amount: string) => void
+  isSelling: boolean
 }
 
 function TokenItem({ token, onSell, isSelling }: TokenItemProps) {
-  const [amount, setAmount] = useState('');
-  const formattedBalance = formatTokenBalance(token.tokenBalance, token.decimals || 18);
+  const [amount, setAmount] = useState('')
+  const formattedBalance = formatTokenBalance(
+    token.tokenBalance,
+    token.decimals || 18
+  )
 
   return (
-    <div className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
+    <div className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50">
       <div className="flex items-center gap-3">
         {token.logo ? (
-          <img src={token.logo} alt={token.symbol} className="w-10 h-10 rounded-full" />
+          <img
+            src={token.logo}
+            alt={token.symbol}
+            className="h-10 w-10 rounded-full"
+          />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Coins className="w-5 h-5 text-primary" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+            <Coins className="h-5 w-5 text-primary" />
           </div>
         )}
         <div>
@@ -53,44 +80,45 @@ function TokenItem({ token, onSell, isSelling }: TokenItemProps) {
           disabled={!amount || isSelling}
         >
           {isSelling ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Send className="w-4 h-4" />
+            <Send className="h-4 w-4" />
           )}
           <span className="ml-2">Sell</span>
         </Button>
       </div>
     </div>
-  );
+  )
 }
 
 export function TokenList() {
-  const { tokens, isLoading, error, refetch } = useTokens();
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const [sellingToken, setSellingToken] = useState<string | null>(null);
-  const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle');
-  const harvestDeployed = isHarvestDeployed(chainId);
+  const { tokens, isLoading, error, refetch } = useTokens()
+  const { address } = useAccount()
+  const chainId = useChainId()
+  const [sellingToken, setSellingToken] = useState<string | null>(null)
+  const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle')
+  const harvestDeployed = isHarvestDeployed(chainId)
 
-  const { writeContract: writeApprove, data: approveHash } = useWriteContract();
-  const { writeContract: writeSell, data: sellHash } = useWriteContract();
+  const { writeContract: writeApprove, data: approveHash } = useWriteContract()
+  const { writeContract: writeSell, data: sellHash } = useWriteContract()
 
   const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
     hash: approveHash,
-  });
+  })
 
-  const { isSuccess: isSellSuccess, isLoading: isSellLoading } = useWaitForTransactionReceipt({
-    hash: sellHash,
-  });
+  const { isSuccess: isSellSuccess, isLoading: isSellLoading } =
+    useWaitForTransactionReceipt({
+      hash: sellHash,
+    })
 
   const handleSell = async (token: AlchemyToken, amountStr: string) => {
-    if (!address || !amountStr || !harvestDeployed) return;
+    if (!address || !amountStr || !harvestDeployed) return
 
-    const decimals = token.decimals || 18;
-    const amount = parseUnits(amountStr, decimals);
+    const decimals = token.decimals || 18
+    const amount = parseUnits(amountStr, decimals)
 
-    setSellingToken(token.contractAddress);
-    setStep('approving');
+    setSellingToken(token.contractAddress)
+    setStep('approving')
 
     try {
       // First approve the Harvest contract to spend tokens
@@ -100,34 +128,37 @@ export function TokenList() {
         functionName: 'approve',
         args: [HARVEST_ADDRESS, amount],
         chainId,
-      });
+      })
     } catch (err) {
-      console.error('Error approving:', err);
-      setSellingToken(null);
-      setStep('idle');
+      console.error('Error approving:', err)
+      setSellingToken(null)
+      setStep('idle')
     }
-  };
+  }
 
   // When approval is successful, proceed to sell
   if (isApproveSuccess && step === 'approving' && sellingToken) {
-    const token = tokens.find(t => t.contractAddress === sellingToken);
+    const token = tokens.find((t) => t.contractAddress === sellingToken)
     if (token) {
-      setStep('selling');
+      setStep('selling')
       writeSell({
         address: HARVEST_ADDRESS,
         abi: HARVEST_ABI,
         functionName: 'sellErc20',
-        args: [token.contractAddress as `0x${string}`, BigInt(token.tokenBalance)],
+        args: [
+          token.contractAddress as `0x${string}`,
+          BigInt(token.tokenBalance),
+        ],
         chainId,
-      });
+      })
     }
   }
 
   // Reset state when sell is successful
   if (isSellSuccess && step === 'selling') {
-    setSellingToken(null);
-    setStep('idle');
-    refetch();
+    setSellingToken(null)
+    setStep('idle')
+    refetch()
   }
 
   if (!address) {
@@ -135,13 +166,13 @@ export function TokenList() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Coins className="w-5 h-5" />
+            <Coins className="h-5 w-5" />
             ERC20 Tokens
           </CardTitle>
           <CardDescription>Connect your wallet to view tokens</CardDescription>
         </CardHeader>
       </Card>
-    );
+    )
   }
 
   return (
@@ -150,15 +181,22 @@ export function TokenList() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Coins className="w-5 h-5" />
+              <Coins className="h-5 w-5" />
               ERC20 Tokens
             </CardTitle>
             <CardDescription>
               Sell your tokens to the Harvest contract for 1 gwei each
             </CardDescription>
           </div>
-          <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+            />
           </Button>
         </div>
       </CardHeader>
@@ -166,8 +204,11 @@ export function TokenList() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 p-4 border rounded-lg">
-                <Skeleton className="w-10 h-10 rounded-full" />
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg border p-4"
+              >
+                <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-24" />
@@ -176,25 +217,32 @@ export function TokenList() {
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-8 text-destructive">
+          <div className="py-8 text-center text-destructive">
             <p>Error loading tokens: {error}</p>
-            <Button variant="outline" onClick={() => refetch()} className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              className="mt-4"
+            >
               Try Again
             </Button>
           </div>
         ) : tokens.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Coins className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <div className="py-8 text-center text-muted-foreground">
+            <Coins className="mx-auto mb-4 h-12 w-12 opacity-50" />
             <p>No ERC20 tokens found</p>
-            <p className="text-sm mt-2">
+            <p className="mt-2 text-sm">
               Make sure you have the Alchemy API key configured
             </p>
           </div>
         ) : !harvestDeployed ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              <p className="text-sm">Harvest is not deployed on this chain. Switch to Ethereum or Base to sell.</p>
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-sm">
+                Harvest is not deployed on this chain. Switch to Ethereum or
+                Base to sell.
+              </p>
             </div>
             <ScrollArea className="h-[350px] pr-4">
               <div className="space-y-3 opacity-60">
@@ -223,25 +271,25 @@ export function TokenList() {
             </div>
           </ScrollArea>
         )}
-        
+
         {step !== 'idle' && (
-          <div className="mt-4 p-4 bg-muted rounded-lg">
+          <div className="mt-4 rounded-lg bg-muted p-4">
             <div className="flex items-center gap-2">
               {step === 'approving' && (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Approving token transfer...</span>
                 </>
               )}
               {step === 'selling' && !isSellLoading && (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Selling token...</span>
                 </>
               )}
               {isSellSuccess && (
                 <>
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="h-4 w-4 text-green-500" />
                   <span>Token sold successfully!</span>
                 </>
               )}
@@ -250,5 +298,5 @@ export function TokenList() {
         )}
       </CardContent>
     </Card>
-  );
+  )
 }

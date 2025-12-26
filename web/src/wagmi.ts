@@ -1,10 +1,12 @@
 import { connectorsForWallets } from '@rainbow-me/rainbowkit'
-import { getChains } from '@/config/chains'
-import { createConfig, http } from 'wagmi'
 import {
   rainbowWallet,
   walletConnectWallet,
 } from '@rainbow-me/rainbowkit/wallets'
+import { createConfig, http } from 'wagmi'
+
+import { getChains } from '@/config/chains'
+
 import { getAlchemyBaseUrl } from './lib/alchemy'
 
 const connectors = connectorsForWallets(

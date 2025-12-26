@@ -1,4 +1,4 @@
-import { mainnet, base } from 'wagmi/chains'
+import { base, mainnet } from 'wagmi/chains'
 import type { Chain } from 'wagmi/chains'
 
 /**

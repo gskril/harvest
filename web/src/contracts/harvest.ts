@@ -76,9 +76,24 @@ export const HARVEST_ABI = [
     type: 'event',
     name: 'SoldErc1155',
     inputs: [
-      { name: 'collection', type: 'address', indexed: false, internalType: 'address' },
-      { name: 'tokenId', type: 'uint256', indexed: false, internalType: 'uint256' },
-      { name: 'amount', type: 'uint256', indexed: false, internalType: 'uint256' },
+      {
+        name: 'collection',
+        type: 'address',
+        indexed: false,
+        internalType: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
     ],
     anonymous: false,
   },
@@ -86,8 +101,18 @@ export const HARVEST_ABI = [
     type: 'event',
     name: 'SoldErc20',
     inputs: [
-      { name: 'token', type: 'address', indexed: false, internalType: 'address' },
-      { name: 'amount', type: 'uint256', indexed: false, internalType: 'uint256' },
+      {
+        name: 'token',
+        type: 'address',
+        indexed: false,
+        internalType: 'address',
+      },
+      {
+        name: 'amount',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
     ],
     anonymous: false,
   },
@@ -95,8 +120,18 @@ export const HARVEST_ABI = [
     type: 'event',
     name: 'SoldErc721',
     inputs: [
-      { name: 'collection', type: 'address', indexed: false, internalType: 'address' },
-      { name: 'tokenId', type: 'uint256', indexed: false, internalType: 'uint256' },
+      {
+        name: 'collection',
+        type: 'address',
+        indexed: false,
+        internalType: 'address',
+      },
+      {
+        name: 'tokenId',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
     ],
     anonymous: false,
   },
@@ -105,7 +140,7 @@ export const HARVEST_ABI = [
     name: 'TransferFailed',
     inputs: [],
   },
-] as const;
+] as const
 
 // ERC20 ABI for approval
 export const ERC20_ABI = [
@@ -157,7 +192,7 @@ export const ERC20_ABI = [
     outputs: [{ name: '', type: 'string', internalType: 'string' }],
     stateMutability: 'view',
   },
-] as const;
+] as const
 
 // ERC721 ABI for approval
 export const ERC721_ABI = [
@@ -198,7 +233,7 @@ export const ERC721_ABI = [
     outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
     stateMutability: 'view',
   },
-] as const;
+] as const
 
 // ERC1155 ABI for approval
 export const ERC1155_ABI = [
@@ -232,7 +267,9 @@ export const ERC1155_ABI = [
     outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
     stateMutability: 'view',
   },
-] as const;
+] as const
 
 // Harvest contract address deployed on Ethereum Mainnet
-export const HARVEST_ADDRESS: `0x${string}` = import.meta.env.VITE_HARVEST_ADDRESS as `0x${string}` || '0x88bcea869a1aaa637d2d53be744172ab601c5e03';
+export const HARVEST_ADDRESS: `0x${string}` =
+  (import.meta.env.VITE_HARVEST_ADDRESS as `0x${string}`) ||
+  '0x88bcea869a1aaa637d2d53be744172ab601c5e03'
