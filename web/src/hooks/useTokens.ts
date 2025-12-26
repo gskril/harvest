@@ -1,42 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAccount, useChainId } from 'wagmi';
-import { getTokenBalances, type AlchemyToken } from '@/lib/alchemy';
+import { getTokenBalances } from '@/lib/alchemy';
 
 export function useTokens() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const [tokens, setTokens] = useState<AlchemyToken[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchTokens = useCallback(async () => {
-    if (!address || !isConnected) {
-      setTokens([]);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const fetchedTokens = await getTokenBalances(address, chainId);
-      setTokens(fetchedTokens);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch tokens');
-      setTokens([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [address, chainId, isConnected]);
-
-  useEffect(() => {
-    fetchTokens();
-  }, [fetchTokens]);
+  const { data: tokens = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['tokens', address, chainId],
+    queryFn: () => getTokenBalances(address!, chainId),
+    enabled: !!address && isConnected,
+    staleTime: 30_000, // Consider data fresh for 30 seconds
+    refetchOnWindowFocus: false,
+  });
 
   return {
     tokens,
     isLoading,
-    error,
-    refetch: fetchTokens,
+    error: error ? (error as Error).message : null,
+    refetch,
   };
 }

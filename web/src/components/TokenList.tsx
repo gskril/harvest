@@ -157,7 +157,7 @@ export function TokenList() {
               Sell your tokens to the Harvest contract for 1 gwei each
             </CardDescription>
           </div>
-          <Button variant="outline" size="icon" onClick={refetch} disabled={isLoading}>
+          <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -178,7 +178,7 @@ export function TokenList() {
         ) : error ? (
           <div className="text-center py-8 text-destructive">
             <p>Error loading tokens: {error}</p>
-            <Button variant="outline" onClick={refetch} className="mt-4">
+            <Button variant="outline" onClick={() => refetch()} className="mt-4">
               Try Again
             </Button>
           </div>
