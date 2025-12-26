@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   AlertTriangle,
-  Check,
   ImageIcon,
   Loader2,
   RefreshCw,
   Send,
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import {
   useAccount,
   useChainId,
@@ -36,6 +36,7 @@ import {
 } from '@/contracts/harvest'
 import { useNFTs } from '@/hooks/useNFTs'
 import { type AlchemyNFT } from '@/lib/alchemy'
+import { cn } from '@/lib/utils'
 
 interface NFTItemProps {
   nft: AlchemyNFT
@@ -45,6 +46,7 @@ interface NFTItemProps {
 
 function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
   const [amount, setAmount] = useState('1')
+  const [imgError, setImgError] = useState(false)
   const isERC1155 = nft.tokenType === 'ERC1155'
 
   const imageUrl =
@@ -64,14 +66,12 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
   return (
     <div className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50">
       <div className="flex items-center gap-3">
-        {imageUrl ? (
+        {imageUrl && !imgError ? (
           <img
             src={imageUrl}
             alt={nftName}
-            className="h-16 w-16 rounded-lg object-cover"
-            onError={(e) => {
-              ;(e.target as HTMLImageElement).style.display = 'none'
-            }}
+            className="h-16 w-16 rounded-lg bg-primary/10 object-cover"
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10">
@@ -79,8 +79,23 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
           </div>
         )}
         <div>
-          <p className="font-medium">{nftName}</p>
-          <p className="text-sm text-muted-foreground">{collectionName}</p>
+          <p
+            className={cn(
+              'font-medium',
+              !nftName.includes(' ') && 'max-w-[20ch] truncate sm:max-w-[40ch]'
+            )}
+          >
+            {nftName.length > 60 ? `${nftName.slice(0, 60)}…` : nftName}
+          </p>
+          <p
+            className={cn(
+              'text-sm text-muted-foreground',
+              !collectionName.includes(' ') &&
+                'max-w-[20ch] truncate sm:max-w-[40ch]'
+            )}
+          >
+            {collectionName}
+          </p>
           <div className="mt-1 flex items-center gap-2">
             <Badge variant={isERC1155 ? 'default' : 'secondary'}>
               {nft.tokenType}
@@ -132,6 +147,7 @@ export function NFTList() {
     amount?: string
   } | null>(null)
   const harvestDeployed = isHarvestDeployed(chainId)
+  const toastIdRef = useRef<string | null>(null)
 
   const { writeContract: writeApprove, data: approveHash } = useWriteContract()
   const { writeContract: writeSell, data: sellHash } = useWriteContract()
@@ -140,10 +156,32 @@ export function NFTList() {
     hash: approveHash,
   })
 
-  const { isSuccess: isSellSuccess, isLoading: isSellLoading } =
-    useWaitForTransactionReceipt({
-      hash: sellHash,
-    })
+  const { isSuccess: isSellSuccess } = useWaitForTransactionReceipt({
+    hash: sellHash,
+  })
+
+  // Show toast when step changes
+  useEffect(() => {
+    if (step === 'approving') {
+      toastIdRef.current = toast.loading('Approving NFT transfer...')
+    } else if (step === 'selling' && toastIdRef.current) {
+      toast.loading('Selling NFT...', { id: toastIdRef.current })
+    }
+  }, [step])
+
+  // Handle success
+  useEffect(() => {
+    if (isSellSuccess && step === 'selling') {
+      if (toastIdRef.current) {
+        toast.success('NFT sold successfully!', { id: toastIdRef.current })
+        toastIdRef.current = null
+      }
+      setSellingNFT(null)
+      setStep('idle')
+      setPendingSell(null)
+      refetch()
+    }
+  }, [isSellSuccess, step, refetch])
 
   const handleSell = async (nft: AlchemyNFT, amount?: string) => {
     if (!address || !harvestDeployed) return
@@ -175,6 +213,12 @@ export function NFTList() {
       }
     } catch (err) {
       console.error('Error approving:', err)
+      if (toastIdRef.current) {
+        toast.error('Failed to approve NFT transfer', {
+          id: toastIdRef.current,
+        })
+        toastIdRef.current = null
+      }
       setSellingNFT(null)
       setStep('idle')
       setPendingSell(null)
@@ -207,14 +251,6 @@ export function NFTList() {
         chainId,
       })
     }
-  }
-
-  // Reset state when sell is successful
-  if (isSellSuccess && step === 'selling') {
-    setSellingNFT(null)
-    setStep('idle')
-    setPendingSell(null)
-    refetch()
   }
 
   if (!address) {
@@ -304,7 +340,7 @@ export function NFTList() {
                 Base to sell.
               </p>
             </div>
-            <ScrollArea className="h-[350px] pr-4">
+            <ScrollArea className="h-96 pr-4">
               <div className="space-y-3 opacity-60">
                 {nfts.map((nft) => (
                   <NFTItem
@@ -318,7 +354,7 @@ export function NFTList() {
             </ScrollArea>
           </div>
         ) : (
-          <ScrollArea className="h-[400px] pr-4">
+          <ScrollArea className="pr-4">
             <div className="space-y-3">
               {nfts.map((nft) => (
                 <NFTItem
@@ -332,31 +368,6 @@ export function NFTList() {
               ))}
             </div>
           </ScrollArea>
-        )}
-
-        {step !== 'idle' && (
-          <div className="mt-4 rounded-lg bg-muted p-4">
-            <div className="flex items-center gap-2">
-              {step === 'approving' && (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Approving NFT transfer...</span>
-                </>
-              )}
-              {step === 'selling' && !isSellLoading && (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Selling NFT...</span>
-                </>
-              )}
-              {isSellSuccess && (
-                <>
-                  <Check className="h-4 w-4 text-green-500" />
-                  <span>NFT sold successfully!</span>
-                </>
-              )}
-            </div>
-          </div>
         )}
       </CardContent>
     </Card>

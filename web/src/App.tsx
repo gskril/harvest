@@ -19,7 +19,7 @@ function App() {
             <Wheat className="h-8 w-8 text-primary" />
             <h1 className="text-xl font-bold">Harvest</h1>
           </div>
-          <ConnectButton />
+          <ConnectButton showBalance={false} />
         </div>
       </header>
 
@@ -39,7 +39,7 @@ function App() {
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Sidebar */}
             <div className="lg:col-span-1">
-              <HarvestInfo />
+              <HarvestInfo className="lg:sticky lg:top-6" />
             </div>
 
             {/* Main Content Area */}
@@ -69,15 +69,6 @@ function App() {
           </div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="mt-auto border-t">
-        <div className="container flex h-16 items-center justify-center px-4">
-          <p className="text-sm text-muted-foreground">
-            Harvest - Sell your tokens for 1 gwei each
-          </p>
-        </div>
-      </footer>
     </div>
   )
 }

@@ -1,13 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import {
-  AlertTriangle,
-  Check,
-  Coins,
-  Loader2,
-  RefreshCw,
-  Send,
-} from 'lucide-react'
+import { AlertTriangle, Coins, Loader2, RefreshCw, Send } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { parseUnits } from 'viem'
 import {
   useAccount,
@@ -98,6 +92,7 @@ export function TokenList() {
   const [sellingToken, setSellingToken] = useState<string | null>(null)
   const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle')
   const harvestDeployed = isHarvestDeployed(chainId)
+  const toastIdRef = useRef<string | null>(null)
 
   const { writeContract: writeApprove, data: approveHash } = useWriteContract()
   const { writeContract: writeSell, data: sellHash } = useWriteContract()
@@ -106,10 +101,31 @@ export function TokenList() {
     hash: approveHash,
   })
 
-  const { isSuccess: isSellSuccess, isLoading: isSellLoading } =
-    useWaitForTransactionReceipt({
-      hash: sellHash,
-    })
+  const { isSuccess: isSellSuccess } = useWaitForTransactionReceipt({
+    hash: sellHash,
+  })
+
+  // Show toast when step changes
+  useEffect(() => {
+    if (step === 'approving') {
+      toastIdRef.current = toast.loading('Approving token transfer...')
+    } else if (step === 'selling' && toastIdRef.current) {
+      toast.loading('Selling token...', { id: toastIdRef.current })
+    }
+  }, [step])
+
+  // Handle success
+  useEffect(() => {
+    if (isSellSuccess && step === 'selling') {
+      if (toastIdRef.current) {
+        toast.success('Token sold successfully!', { id: toastIdRef.current })
+        toastIdRef.current = null
+      }
+      setSellingToken(null)
+      setStep('idle')
+      refetch()
+    }
+  }, [isSellSuccess, step, refetch])
 
   const handleSell = async (token: AlchemyToken, amountStr: string) => {
     if (!address || !amountStr || !harvestDeployed) return
@@ -131,6 +147,12 @@ export function TokenList() {
       })
     } catch (err) {
       console.error('Error approving:', err)
+      if (toastIdRef.current) {
+        toast.error('Failed to approve token transfer', {
+          id: toastIdRef.current,
+        })
+        toastIdRef.current = null
+      }
       setSellingToken(null)
       setStep('idle')
     }
@@ -152,13 +174,6 @@ export function TokenList() {
         chainId,
       })
     }
-  }
-
-  // Reset state when sell is successful
-  if (isSellSuccess && step === 'selling') {
-    setSellingToken(null)
-    setStep('idle')
-    refetch()
   }
 
   if (!address) {
@@ -244,7 +259,7 @@ export function TokenList() {
                 Base to sell.
               </p>
             </div>
-            <ScrollArea className="h-[350px] pr-4">
+            <ScrollArea className="h-96 pr-4">
               <div className="space-y-3 opacity-60">
                 {tokens.map((token) => (
                   <TokenItem
@@ -270,31 +285,6 @@ export function TokenList() {
               ))}
             </div>
           </ScrollArea>
-        )}
-
-        {step !== 'idle' && (
-          <div className="mt-4 rounded-lg bg-muted p-4">
-            <div className="flex items-center gap-2">
-              {step === 'approving' && (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Approving token transfer...</span>
-                </>
-              )}
-              {step === 'selling' && !isSellLoading && (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Selling token...</span>
-                </>
-              )}
-              {isSellSuccess && (
-                <>
-                  <Check className="h-4 w-4 text-green-500" />
-                  <span>Token sold successfully!</span>
-                </>
-              )}
-            </div>
-          </div>
         )}
       </CardContent>
     </Card>

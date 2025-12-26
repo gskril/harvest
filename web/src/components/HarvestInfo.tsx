@@ -17,7 +17,7 @@ import {
 } from '@/config/chains'
 import { HARVEST_ADDRESS } from '@/contracts/harvest'
 
-export function HarvestInfo() {
+export function HarvestInfo({ className }: { className?: string }) {
   const chainId = useChainId()
   const { data: balance } = useBalance({
     address: HARVEST_ADDRESS,
@@ -29,7 +29,7 @@ export function HarvestInfo() {
   const isDeployed = isHarvestDeployed(chainId)
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Wallet className="h-5 w-5" />
