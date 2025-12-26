@@ -46,17 +46,22 @@ export interface AlchemyNFTsResponse {
   pageKey?: string
 }
 
-// Response type for getTokensForOwner endpoint
-interface GetTokensForOwnerResponse {
-  tokens: Array<{
+// Response type for alchemy_getTokenBalances endpoint
+interface TokenBalancesResponse {
+  address: string
+  tokenBalances: Array<{
     contractAddress: string
-    balance: string
-    name?: string
-    symbol?: string
-    decimals?: number
-    logo?: string
+    tokenBalance: string
   }>
   pageKey?: string
+}
+
+// Response type for alchemy_getTokenMetadata endpoint
+interface TokenMetadataResponse {
+  name?: string
+  symbol?: string
+  decimals?: number
+  logo?: string
 }
 
 const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY || ''
@@ -72,9 +77,53 @@ const getNftApiBaseUrl = (chainId: number): string => {
 }
 
 /**
- * Fetches all ERC20 tokens for an address using Alchemy's getTokensForOwner endpoint.
- * This returns balances WITH metadata in a single request (no N+1 queries).
- * @see https://docs.alchemy.com/reference/alchemy-gettokensforowner
+ * Fetches token metadata for multiple contract addresses in a single batch request.
+ * Uses JSON-RPC batch format to avoid N+1 API calls.
+ */
+async function batchGetTokenMetadata(
+  contractAddresses: string[],
+  baseUrl: string
+): Promise<(TokenMetadataResponse | null)[]> {
+  if (contractAddresses.length === 0) return []
+
+  try {
+    // Build batch JSON-RPC request - array of individual requests
+    const batchRequest = contractAddresses.map((address, index) => ({
+      jsonrpc: '2.0',
+      method: 'alchemy_getTokenMetadata',
+      params: [address],
+      id: index,
+    }))
+
+    const response = await fetch(baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(batchRequest),
+    })
+
+    const batchResponse = await response.json()
+
+    // Response is an array of results, map by id to preserve order
+    const resultsById = new Map<number, TokenMetadataResponse | null>()
+    for (const item of batchResponse) {
+      if (item.error) {
+        resultsById.set(item.id, null)
+      } else {
+        resultsById.set(item.id, item.result)
+      }
+    }
+
+    // Return results in original order
+    return contractAddresses.map((_, index) => resultsById.get(index) ?? null)
+  } catch {
+    return contractAddresses.map(() => null)
+  }
+}
+
+/**
+ * Fetches all ERC20 tokens for an address using Alchemy's alchemy_getTokenBalances method.
+ * Uses "erc20" param to get all ERC-20 tokens, then batch fetches metadata.
+ * @see https://docs.alchemy.com/reference/alchemy-gettokenbalances
  */
 export async function getTokenBalances(
   address: string,
@@ -87,36 +136,63 @@ export async function getTokenBalances(
 
   try {
     const baseUrl = getAlchemyBaseUrl(chainId)
-    const params = new URLSearchParams({
-      owner: address,
+
+    // Step 1: Get all ERC-20 token balances
+    const balancesResponse = await fetch(baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'alchemy_getTokenBalances',
+        params: [address, 'erc20'],
+        id: 1,
+      }),
     })
 
-    // Use the REST endpoint that returns tokens with metadata in one call
-    const response = await fetch(`${baseUrl}/getTokensForOwner?${params}`)
-    const data: GetTokensForOwnerResponse = await response.json()
+    const balancesData = await balancesResponse.json()
 
-    if ('error' in data) {
-      console.error('Alchemy API error:', data)
+    if (balancesData.error) {
+      console.error('Alchemy API error:', balancesData.error)
       return []
     }
 
-    // Map to our AlchemyToken format and filter zero balances
-    return (data.tokens || [])
-      .filter(
-        (token) =>
-          token.balance !== '0' &&
-          token.balance !== '0x0' &&
-          token.balance !==
-            '0x0000000000000000000000000000000000000000000000000000000000000000'
-      )
-      .map((token) => ({
+    const result: TokenBalancesResponse = balancesData.result || {
+      address: '',
+      tokenBalances: [],
+    }
+
+    // Filter out zero balances
+    const nonZeroTokens = (result.tokenBalances || []).filter(
+      (token) =>
+        token.tokenBalance !== '0x0' &&
+        token.tokenBalance !==
+          '0x0000000000000000000000000000000000000000000000000000000000000000'
+    )
+
+    if (nonZeroTokens.length === 0) {
+      return []
+    }
+
+    // Step 2: Batch fetch metadata for tokens (limit to first 100)
+    const tokensToFetch = nonZeroTokens.slice(0, 100)
+    const contractAddresses = tokensToFetch.map((t) => t.contractAddress)
+    const metadataResults = await batchGetTokenMetadata(
+      contractAddresses,
+      baseUrl
+    )
+
+    // Combine balances with metadata
+    return tokensToFetch.map((token, index) => {
+      const metadata = metadataResults[index]
+      return {
         contractAddress: token.contractAddress,
-        tokenBalance: token.balance,
-        name: token.name,
-        symbol: token.symbol,
-        decimals: token.decimals,
-        logo: token.logo,
-      }))
+        tokenBalance: token.tokenBalance,
+        name: metadata?.name,
+        symbol: metadata?.symbol,
+        decimals: metadata?.decimals,
+        logo: metadata?.logo,
+      }
+    })
   } catch (error) {
     console.error('Error fetching token balances:', error)
     return []

@@ -10,6 +10,7 @@ import {
   useWriteContract,
 } from 'wagmi'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -25,6 +26,7 @@ import { isHarvestDeployed } from '@/config/chains'
 import { ERC20_ABI, HARVEST_ABI, HARVEST_ADDRESS } from '@/contracts/harvest'
 import { useTokens } from '@/hooks/useTokens'
 import { type AlchemyToken, formatTokenBalance } from '@/lib/alchemy'
+import { cn } from '@/lib/utils'
 
 interface TokenItemProps {
   token: AlchemyToken
@@ -38,6 +40,9 @@ function TokenItem({ token, onSell, isSelling }: TokenItemProps) {
     token.tokenBalance,
     token.decimals || 18
   )
+
+  const tokenName = token.name || 'Unknown Token'
+  const tokenSymbol = token.symbol || 'tokens'
 
   return (
     <div className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50">
@@ -54,9 +59,23 @@ function TokenItem({ token, onSell, isSelling }: TokenItemProps) {
           </div>
         )}
         <div>
-          <p className="font-medium">{token.name || 'Unknown Token'}</p>
-          <p className="text-sm text-muted-foreground">
-            {formattedBalance} {token.symbol || '???'}
+          <p
+            className={cn(
+              'font-medium',
+              !tokenName.includes(' ') &&
+                'max-w-[15ch] truncate sm:max-w-[20ch]'
+            )}
+          >
+            {tokenName}
+          </p>
+          <p
+            className={cn(
+              'text-sm text-muted-foreground',
+              !tokenSymbol.includes(' ') &&
+                'max-w-[10ch] truncate sm:max-w-[40ch]'
+            )}
+          >
+            {formattedBalance} {tokenSymbol}
           </p>
         </div>
       </div>
@@ -198,6 +217,9 @@ export function TokenList() {
             <CardTitle className="flex items-center gap-2">
               <Coins className="h-5 w-5" />
               ERC20 Tokens
+              {tokens.length > 0 && (
+                <Badge variant="secondary">{tokens.length}</Badge>
+              )}
             </CardTitle>
             <CardDescription>
               Sell your tokens to the Harvest contract for 1 gwei each
@@ -273,7 +295,7 @@ export function TokenList() {
             </ScrollArea>
           </div>
         ) : (
-          <ScrollArea className="h-[400px] pr-4">
+          <ScrollArea className="pr-4">
             <div className="space-y-3">
               {tokens.map((token) => (
                 <TokenItem
