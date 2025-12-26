@@ -113,16 +113,28 @@ export function TokenList() {
   const harvestDeployed = isHarvestDeployed(chainId)
   const toastIdRef = useRef<string | null>(null)
 
-  const { writeContract: writeApprove, data: approveHash } = useWriteContract()
-  const { writeContract: writeSell, data: sellHash } = useWriteContract()
+  const {
+    writeContract: writeApprove,
+    data: approveHash,
+    error: approveError,
+    reset: resetApprove,
+  } = useWriteContract()
+  const {
+    writeContract: writeSell,
+    data: sellHash,
+    error: sellError,
+    reset: resetSell,
+  } = useWriteContract()
 
-  const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
-    hash: approveHash,
-  })
+  const { isSuccess: isApproveSuccess, isError: isApproveError } =
+    useWaitForTransactionReceipt({
+      hash: approveHash,
+    })
 
-  const { isSuccess: isSellSuccess } = useWaitForTransactionReceipt({
-    hash: sellHash,
-  })
+  const { isSuccess: isSellSuccess, isError: isSellError } =
+    useWaitForTransactionReceipt({
+      hash: sellHash,
+    })
 
   // Show toast when step changes
   useEffect(() => {
@@ -145,6 +157,40 @@ export function TokenList() {
       refetch()
     }
   }, [isSellSuccess, step, refetch])
+
+  // Handle errors (including user rejections)
+  useEffect(() => {
+    const hasError = approveError || sellError || isApproveError || isSellError
+
+    if (hasError && step !== 'idle') {
+      const errorMessage =
+        approveError?.message || sellError?.message || 'Transaction failed'
+      const isUserRejection =
+        errorMessage.includes('User rejected') ||
+        errorMessage.includes('user rejected') ||
+        errorMessage.includes('User denied')
+
+      if (toastIdRef.current) {
+        toast.error(isUserRejection ? 'Transaction cancelled' : errorMessage, {
+          id: toastIdRef.current,
+        })
+        toastIdRef.current = null
+      }
+
+      setSellingToken(null)
+      setStep('idle')
+      resetApprove()
+      resetSell()
+    }
+  }, [
+    approveError,
+    sellError,
+    isApproveError,
+    isSellError,
+    step,
+    resetApprove,
+    resetSell,
+  ])
 
   const handleSell = async (token: AlchemyToken, amountStr: string) => {
     if (!address || !amountStr || !harvestDeployed) return
