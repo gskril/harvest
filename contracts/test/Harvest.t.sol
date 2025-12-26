@@ -2,7 +2,7 @@
 pragma solidity 0.8.27;
 
 import {Test} from "forge-std/Test.sol";
-import {Harvest} from "../contracts/Harvest.sol";
+import {Harvest} from "../src/Harvest.sol";
 
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockERC721} from "./mocks/MockERC721.sol";
