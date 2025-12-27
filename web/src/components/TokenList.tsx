@@ -6,9 +6,11 @@ import { parseUnits } from 'viem'
 import {
   useAccount,
   useChainId,
+  useConfig,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi'
+import { readContract } from 'wagmi/actions'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -113,7 +115,9 @@ export function TokenList() {
   const { tokens, isLoading, error, refetch } = useTokens()
   const { address } = useAccount()
   const chainId = useChainId()
+  const config = useConfig()
   const [sellingToken, setSellingToken] = useState<string | null>(null)
+  const [sellingAmount, setSellingAmount] = useState<bigint | null>(null)
   const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle')
   const harvestDeployed = isHarvestDeployed(chainId)
   const toastIdRef = useRef<string | null>(null)
@@ -158,10 +162,13 @@ export function TokenList() {
         toastIdRef.current = null
       }
       setSellingToken(null)
+      setSellingAmount(null)
       setStep('idle')
+      resetApprove()
+      resetSell()
       refetch()
     }
-  }, [isSellSuccess, step, refetch])
+  }, [isSellSuccess, step, refetch, resetApprove, resetSell])
 
   // Handle errors (including user rejections)
   useEffect(() => {
@@ -183,6 +190,7 @@ export function TokenList() {
       }
 
       setSellingToken(null)
+      setSellingAmount(null)
       setStep('idle')
       resetApprove()
       resetSell()
@@ -204,46 +212,71 @@ export function TokenList() {
     const amount = parseUnits(amountStr, decimals)
 
     setSellingToken(token.contractAddress)
-    setStep('approving')
+    setSellingAmount(amount)
 
     try {
-      // First approve the Harvest contract to spend tokens
-      writeApprove({
+      // Check existing allowance
+      const allowance = await readContract(config, {
         address: token.contractAddress as `0x${string}`,
         abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [HARVEST_ADDRESS, amount],
+        functionName: 'allowance',
+        args: [address, HARVEST_ADDRESS],
         chainId,
       })
+
+      if (allowance >= amount) {
+        // Already approved, go directly to selling
+        setStep('selling')
+        toastIdRef.current = toast.loading('Selling token...')
+
+        writeSell({
+          address: HARVEST_ADDRESS,
+          abi: HARVEST_ABI,
+          functionName: 'sellErc20',
+          args: [token.contractAddress as `0x${string}`, amount],
+          chainId,
+        })
+      } else {
+        // Need to approve first
+        setStep('approving')
+
+        writeApprove({
+          address: token.contractAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [HARVEST_ADDRESS, amount],
+          chainId,
+        })
+      }
     } catch (err) {
-      console.error('Error approving:', err)
+      console.error('Error:', err)
       if (toastIdRef.current) {
-        toast.error('Failed to approve token transfer', {
+        toast.error('Failed to process token sale', {
           id: toastIdRef.current,
         })
         toastIdRef.current = null
       }
       setSellingToken(null)
+      setSellingAmount(null)
       setStep('idle')
     }
   }
 
   // When approval is successful, proceed to sell
-  if (isApproveSuccess && step === 'approving' && sellingToken) {
-    const token = tokens.find((t) => t.contractAddress === sellingToken)
-    if (token) {
-      setStep('selling')
-      writeSell({
-        address: HARVEST_ADDRESS,
-        abi: HARVEST_ABI,
-        functionName: 'sellErc20',
-        args: [
-          token.contractAddress as `0x${string}`,
-          BigInt(token.tokenBalance),
-        ],
-        chainId,
-      })
-    }
+  if (
+    isApproveSuccess &&
+    step === 'approving' &&
+    sellingToken &&
+    sellingAmount
+  ) {
+    setStep('selling')
+    writeSell({
+      address: HARVEST_ADDRESS,
+      abi: HARVEST_ABI,
+      functionName: 'sellErc20',
+      args: [sellingToken as `0x${string}`, sellingAmount],
+      chainId,
+    })
   }
 
   if (!address) {

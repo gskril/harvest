@@ -272,4 +272,4 @@ export const ERC1155_ABI = [
 // Harvest contract address deployed on Ethereum Mainnet
 export const HARVEST_ADDRESS: `0x${string}` =
   (import.meta.env.VITE_HARVEST_ADDRESS as `0x${string}`) ||
-  '0x88bcea869a1aaa637d2d53be744172ab601c5e03'
+  '0x88BCEa869A1Aaa637d2d53BE744172aB601c5e03'

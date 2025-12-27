@@ -11,9 +11,11 @@ import toast from 'react-hot-toast'
 import {
   useAccount,
   useChainId,
+  useConfig,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi'
+import { readContract } from 'wagmi/actions'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -145,6 +147,7 @@ export function NFTList() {
   const { nfts, isLoading, error, totalCount, refetch } = useNFTs()
   const { address } = useAccount()
   const chainId = useChainId()
+  const config = useConfig()
   const [sellingNFT, setSellingNFT] = useState<string | null>(null)
   const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle')
   const [pendingSell, setPendingSell] = useState<{
@@ -196,9 +199,11 @@ export function NFTList() {
       setSellingNFT(null)
       setStep('idle')
       setPendingSell(null)
+      resetApprove()
+      resetSell()
       refetch()
     }
-  }, [isSellSuccess, step, refetch])
+  }, [isSellSuccess, step, refetch, resetApprove, resetSell])
 
   // Handle errors (including user rejections)
   useEffect(() => {
@@ -240,33 +245,98 @@ export function NFTList() {
 
     const nftKey = `${nft.contract.address}-${nft.tokenId}`
     setSellingNFT(nftKey)
-    setStep('approving')
     setPendingSell({ nft, amount })
 
     try {
+      // Check if already approved
+      let isApproved = false
+
       if (nft.tokenType === 'ERC721') {
-        // For ERC721, approve the specific token
-        writeApprove({
+        // Check getApproved for this specific token
+        const approved = await readContract(config, {
           address: nft.contract.address as `0x${string}`,
           abi: ERC721_ABI,
-          functionName: 'approve',
-          args: [HARVEST_ADDRESS, BigInt(nft.tokenId)],
+          functionName: 'getApproved',
+          args: [BigInt(nft.tokenId)],
           chainId,
         })
+        if (approved === HARVEST_ADDRESS) {
+          isApproved = true
+        } else {
+          // Also check isApprovedForAll
+          const approvedForAll = await readContract(config, {
+            address: nft.contract.address as `0x${string}`,
+            abi: ERC721_ABI,
+            functionName: 'isApprovedForAll',
+            args: [address, HARVEST_ADDRESS],
+            chainId,
+          })
+          isApproved = approvedForAll
+        }
       } else {
-        // For ERC1155, set approval for all
-        writeApprove({
+        // For ERC1155, check isApprovedForAll
+        const approvedForAll = await readContract(config, {
           address: nft.contract.address as `0x${string}`,
           abi: ERC1155_ABI,
-          functionName: 'setApprovalForAll',
-          args: [HARVEST_ADDRESS, true],
+          functionName: 'isApprovedForAll',
+          args: [address, HARVEST_ADDRESS],
           chainId,
         })
+        isApproved = approvedForAll
+      }
+
+      if (isApproved) {
+        // Skip approval, go directly to selling
+        setStep('selling')
+        toastIdRef.current = toast.loading('Selling NFT...')
+
+        if (nft.tokenType === 'ERC721') {
+          writeSell({
+            address: HARVEST_ADDRESS,
+            abi: HARVEST_ABI,
+            functionName: 'sellErc721',
+            args: [nft.contract.address as `0x${string}`, BigInt(nft.tokenId)],
+            chainId,
+          })
+        } else {
+          writeSell({
+            address: HARVEST_ADDRESS,
+            abi: HARVEST_ABI,
+            functionName: 'sellErc1155',
+            args: [
+              nft.contract.address as `0x${string}`,
+              BigInt(nft.tokenId),
+              BigInt(amount || '1'),
+            ],
+            chainId,
+          })
+        }
+      } else {
+        // Need to approve first
+        setStep('approving')
+
+        if (nft.tokenType === 'ERC721') {
+          writeApprove({
+            address: nft.contract.address as `0x${string}`,
+            abi: ERC721_ABI,
+            functionName: 'approve',
+            args: [HARVEST_ADDRESS, BigInt(nft.tokenId)],
+            chainId,
+          })
+        } else {
+          writeApprove({
+            address: nft.contract.address as `0x${string}`,
+            abi: ERC1155_ABI,
+            functionName: 'setApprovalForAll',
+            args: [HARVEST_ADDRESS, true],
+            chainId,
+          })
+        }
       }
     } catch (err) {
-      console.error('Error approving:', err)
+      console.error('Error:', err)
       if (toastIdRef.current) {
-        toast.error('Failed to approve NFT transfer', {
+        toast.error('Failed to process NFT sale', {
           id: toastIdRef.current,
         })
         toastIdRef.current = null
