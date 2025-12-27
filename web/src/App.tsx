@@ -1,34 +1,75 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { Coins, ImageIcon, Wheat } from 'lucide-react'
+import { useAccount } from 'wagmi'
+
+import { HarvestInfo } from '@/components/HarvestInfo'
+import { NFTList } from '@/components/NFTList'
+import { TokenList } from '@/components/TokenList'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { isConnected } = useAccount()
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b">
+        <div className="container flex h-16 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <Wheat className="h-8 w-8 text-primary" />
+            <h1 className="text-xl font-bold">Harvest</h1>
+          </div>
+          <ConnectButton showBalance={false} />
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container px-4 py-8">
+        {!isConnected ? (
+          <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+            <Wheat className="mb-6 h-24 w-24 text-primary" />
+            <h2 className="mb-4 text-3xl font-bold">Welcome to Harvest</h2>
+            <p className="mb-8 max-w-md text-muted-foreground">
+              Connect your wallet to view your tokens and NFTs. Sell unwanted
+              assets to the Harvest contract for 1 gwei each.
+            </p>
+            <ConnectButton />
+          </div>
+        ) : (
+          <div className="grid gap-8 lg:grid-cols-3">
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <HarvestInfo className="lg:sticky lg:top-6" />
+            </div>
+
+            {/* Main Content Area */}
+            <div className="lg:col-span-2">
+              <Tabs defaultValue="nfts" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="nfts" className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    NFTs
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="tokens"
+                    className="flex items-center gap-2"
+                  >
+                    <Coins className="h-4 w-4" />
+                    Tokens
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="nfts" className="mt-4">
+                  <NFTList />
+                </TabsContent>
+                <TabsContent value="tokens" className="mt-4">
+                  <TokenList />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   )
 }
 
