@@ -76,3 +76,23 @@ export const getBlockExplorer = (chainId: number): string => {
 export const isHarvestDeployed = (chainId: number): boolean => {
   return SUPPORTED_CHAINS[chainId]?.harvestDeployed ?? false
 }
+
+export const getOpenseaUrl = (
+  chainId: number,
+  contractAddress: string,
+  tokenId?: string
+) => {
+  const chainConfig = getChainConfig(chainId)
+  if (!chainConfig) {
+    throw new Error(`Chain ${chainId} not supported`)
+  }
+  const chainName = chainConfig.chain.name.toLowerCase()
+
+  if (!tokenId) {
+    // ERC20
+    return `https://opensea.io/token/${chainName}/${contractAddress}`
+  }
+
+  // NFT
+  return `https://opensea.io/item/${chainName}/${contractAddress}/${tokenId}`
+}

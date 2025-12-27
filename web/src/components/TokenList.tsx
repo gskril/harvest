@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isHarvestDeployed } from '@/config/chains'
+import { getOpenseaUrl, isHarvestDeployed } from '@/config/chains'
 import { ERC20_ABI, HARVEST_ABI, HARVEST_ADDRESS } from '@/contracts/harvest'
 import { useTokens } from '@/hooks/useTokens'
 import { type AlchemyToken, formatTokenBalance } from '@/lib/alchemy'
@@ -36,6 +36,8 @@ interface TokenItemProps {
 
 function TokenItem({ token, onSell, isSelling }: TokenItemProps) {
   const [amount, setAmount] = useState('')
+  const chainId = useChainId()
+
   const formattedBalance = formatTokenBalance(
     token.tokenBalance,
     token.decimals || 18
@@ -59,15 +61,18 @@ function TokenItem({ token, onSell, isSelling }: TokenItemProps) {
           </div>
         )}
         <div>
-          <p
+          <a
+            href={getOpenseaUrl(chainId, token.contractAddress)}
+            target="_blank"
+            rel="noopener noreferrer"
             className={cn(
-              'font-medium',
+              'block font-medium',
               !tokenName.includes(' ') &&
                 'max-w-[15ch] truncate sm:max-w-[20ch]'
             )}
           >
             {tokenName}
-          </p>
+          </a>
           <p
             className={cn(
               'text-sm text-muted-foreground',
@@ -327,7 +332,7 @@ export function TokenList() {
                 Base to sell.
               </p>
             </div>
-            <ScrollArea className="h-96 pr-4">
+            <ScrollArea className="h-96">
               <div className="space-y-3 opacity-60">
                 {tokens.map((token) => (
                   <TokenItem
@@ -341,18 +346,16 @@ export function TokenList() {
             </ScrollArea>
           </div>
         ) : (
-          <ScrollArea className="pr-4">
-            <div className="space-y-3">
-              {tokens.map((token) => (
-                <TokenItem
-                  key={token.contractAddress}
-                  token={token}
-                  onSell={handleSell}
-                  isSelling={sellingToken === token.contractAddress}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="space-y-3">
+            {tokens.map((token) => (
+              <TokenItem
+                key={token.contractAddress}
+                token={token}
+                onSell={handleSell}
+                isSelling={sellingToken === token.contractAddress}
+              />
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

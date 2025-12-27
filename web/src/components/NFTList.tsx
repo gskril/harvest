@@ -27,7 +27,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isHarvestDeployed } from '@/config/chains'
+import { getOpenseaUrl, isHarvestDeployed } from '@/config/chains'
 import {
   ERC721_ABI,
   ERC1155_ABI,
@@ -48,6 +48,8 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
   const [amount, setAmount] = useState('1')
   const [imgError, setImgError] = useState(false)
   const isERC1155 = nft.tokenType === 'ERC1155'
+  const chainId = useChainId()
+  const openseaUrl = getOpenseaUrl(chainId, nft.contract.address, nft.tokenId)
 
   const imageUrl =
     nft.image?.thumbnailUrl ||
@@ -79,14 +81,17 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
           </div>
         )}
         <div>
-          <p
+          <a
+            href={openseaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             className={cn(
-              'font-medium',
+              'block font-medium',
               !nftName.includes(' ') && 'max-w-[20ch] truncate sm:max-w-[40ch]'
             )}
           >
             {nftName.length > 60 ? `${nftName.slice(0, 60)}…` : nftName}
-          </p>
+          </a>
           <p
             className={cn(
               'text-sm text-muted-foreground',
@@ -387,7 +392,7 @@ export function NFTList() {
                 Base to sell.
               </p>
             </div>
-            <ScrollArea className="h-96 pr-4">
+            <ScrollArea className="h-96">
               <div className="space-y-3 opacity-60">
                 {nfts.map((nft) => (
                   <NFTItem
@@ -401,20 +406,18 @@ export function NFTList() {
             </ScrollArea>
           </div>
         ) : (
-          <ScrollArea className="pr-4">
-            <div className="space-y-3">
-              {nfts.map((nft) => (
-                <NFTItem
-                  key={`${nft.contract.address}-${nft.tokenId}`}
-                  nft={nft}
-                  onSell={handleSell}
-                  isSelling={
-                    sellingNFT === `${nft.contract.address}-${nft.tokenId}`
-                  }
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="space-y-3">
+            {nfts.map((nft) => (
+              <NFTItem
+                key={`${nft.contract.address}-${nft.tokenId}`}
+                nft={nft}
+                onSell={handleSell}
+                isSelling={
+                  sellingNFT === `${nft.contract.address}-${nft.tokenId}`
+                }
+              />
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

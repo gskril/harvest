@@ -44,8 +44,12 @@ function App() {
 
             {/* Main Content Area */}
             <div className="lg:col-span-2">
-              <Tabs defaultValue="tokens" className="w-full">
+              <Tabs defaultValue="nfts" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="nfts" className="flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    NFTs
+                  </TabsTrigger>
                   <TabsTrigger
                     value="tokens"
                     className="flex items-center gap-2"
@@ -53,16 +57,12 @@ function App() {
                     <Coins className="h-4 w-4" />
                     Tokens
                   </TabsTrigger>
-                  <TabsTrigger value="nfts" className="flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    NFTs
-                  </TabsTrigger>
                 </TabsList>
-                <TabsContent value="tokens" className="mt-4">
-                  <TokenList />
-                </TabsContent>
                 <TabsContent value="nfts" className="mt-4">
                   <NFTList />
+                </TabsContent>
+                <TabsContent value="tokens" className="mt-4">
+                  <TokenList />
                 </TabsContent>
               </Tabs>
             </div>

@@ -35,9 +35,7 @@ export function HarvestInfo({ className }: { className?: string }) {
           <Wallet className="h-5 w-5" />
           Harvest Contract
         </CardTitle>
-        <CardDescription>
-          Sell your tokens and NFTs for 1 gwei each
-        </CardDescription>
+        <CardDescription>Sell your tokens for 1 gwei</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
