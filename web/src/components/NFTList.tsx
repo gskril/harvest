@@ -61,6 +61,9 @@ function getAcquisitionLabel(nft: NFTWithAcquisition): string {
     case 'purchase':
       return `Bought for ${nft.acquisitionPrice} ${nft.acquisitionSymbol}`
     case 'mint':
+      if (nft.acquisitionPrice && nft.acquisitionSymbol) {
+        return `Minted for ${nft.acquisitionPrice} ${nft.acquisitionSymbol}`
+      }
       return 'Minted'
     case 'transfer':
       return 'Received'

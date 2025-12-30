@@ -1,4 +1,5 @@
 // OpenSea API Types and Helpers
+import { batchGetTransactionValues, weiToEth } from '@/lib/alchemy'
 import { getOpenseaChain } from '@/config/chains'
 
 export interface OpenSeaNFT {
@@ -447,6 +448,46 @@ export async function getNFTsWithAcquisition(
       }
     }
   )
+
+  // Enrich mints with transaction values (mint cost)
+  // Find mints that have a valid tx hash but no price
+  const mintsToEnrich = nftsWithAcquisition.filter(
+    (nft) =>
+      nft.acquisitionType === 'mint' &&
+      nft.acquisitionTxHash &&
+      nft.acquisitionTxHash.startsWith('0x') &&
+      !nft.acquisitionPrice
+  )
+
+  if (mintsToEnrich.length > 0) {
+    // Batch fetch transaction values
+    const txHashes = mintsToEnrich.map((nft) => nft.acquisitionTxHash!)
+    const txValues = await batchGetTransactionValues(txHashes, chainId)
+
+    // Create a map of txHash -> ETH value
+    const txValueMap = new Map<string, string | null>()
+    for (const { txHash, value } of txValues) {
+      const ethValue = weiToEth(value)
+      if (ethValue) {
+        txValueMap.set(txHash, ethValue)
+      }
+    }
+
+    // Update NFTs with mint costs
+    for (const nft of nftsWithAcquisition) {
+      if (
+        nft.acquisitionType === 'mint' &&
+        nft.acquisitionTxHash &&
+        !nft.acquisitionPrice
+      ) {
+        const ethValue = txValueMap.get(nft.acquisitionTxHash)
+        if (ethValue) {
+          nft.acquisitionPrice = ethValue
+          nft.acquisitionSymbol = 'ETH'
+        }
+      }
+    }
+  }
 
   // Sort by: acquisition type priority first, then by date (oldest first within each type)
   nftsWithAcquisition.sort((a, b) => {
