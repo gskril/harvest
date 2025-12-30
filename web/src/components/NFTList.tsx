@@ -29,7 +29,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isHarvestDeployed } from '@/config/chains'
+import { getBlockExplorer, isHarvestDeployed } from '@/config/chains'
 import {
   ERC721_ABI,
   ERC1155_ABI,
@@ -44,6 +44,7 @@ interface NFTItemProps {
   nft: NFTWithAcquisition
   onSell: (nft: NFTWithAcquisition, amount?: string) => void
   isSelling: boolean
+  chainId: number
 }
 
 function formatAcquisitionDate(date: Date | null): string {
@@ -68,7 +69,7 @@ function getAcquisitionLabel(nft: NFTWithAcquisition): string {
   }
 }
 
-function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
+function NFTItem({ nft, onSell, isSelling, chainId }: NFTItemProps) {
   const [amount, setAmount] = useState('1')
   const [imgError, setImgError] = useState(false)
   const isERC1155 = nft.tokenType === 'ERC1155'
@@ -78,6 +79,10 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
   const nftName = nft.name || `#${nft.identifier}`
 
   const collectionName = nft.collection || 'Unknown Collection'
+
+  const txUrl = nft.acquisitionTxHash
+    ? `${getBlockExplorer(chainId)}/tx/${nft.acquisitionTxHash}`
+    : null
 
   return (
     <div className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50">
@@ -130,9 +135,20 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
               {getAcquisitionLabel(nft)}
             </Badge>
             {nft.acquisitionDate && (
-              <span className="text-xs text-muted-foreground">
-                {formatAcquisitionDate(nft.acquisitionDate)}
-              </span>
+              txUrl ? (
+                <a
+                  href={txUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                >
+                  {formatAcquisitionDate(nft.acquisitionDate)}
+                </a>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {formatAcquisitionDate(nft.acquisitionDate)}
+                </span>
+              )
             )}
           </div>
         </div>
@@ -495,6 +511,7 @@ export function NFTList() {
                     nft={nft}
                     onSell={() => {}}
                     isSelling={false}
+                    chainId={chainId}
                   />
                 ))}
               </div>
@@ -510,6 +527,7 @@ export function NFTList() {
                 isSelling={
                   sellingNFT === `${nft.contract}-${nft.identifier}`
                 }
+                chainId={chainId}
               />
             ))}
           </div>

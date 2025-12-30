@@ -82,6 +82,7 @@ export interface NFTWithAcquisition extends OpenSeaNFT {
   acquisitionSymbol: string | null
   acquisitionDate: Date | null
   acquisitionType: 'purchase' | 'transfer' | 'mint' | 'unknown'
+  acquisitionTxHash: string | null
 }
 
 const OPENSEA_API_KEY = import.meta.env.VITE_OPENSEA_API_KEY || ''
@@ -260,6 +261,7 @@ type AcquisitionInfo = {
   symbol: string | null
   date: Date
   type: 'purchase' | 'transfer' | 'mint'
+  txHash: string | null
 }
 
 /**
@@ -296,6 +298,7 @@ function processEventsForAcquisition(
             symbol: saleEvent.payment.symbol,
             date: eventDate,
             type: 'purchase',
+            txHash: saleEvent.transaction || null,
           })
         }
       }
@@ -318,6 +321,7 @@ function processEventsForAcquisition(
             symbol: null,
             date: eventDate,
             type: isMint ? 'mint' : 'transfer',
+            txHash: transferEvent.transaction || null,
           })
         }
       }
@@ -397,6 +401,7 @@ export async function getNFTsWithAcquisition(
                 symbol: saleEvent.payment.symbol,
                 date: eventDate,
                 type: 'purchase',
+                txHash: saleEvent.transaction || null,
               })
             }
           }
@@ -416,6 +421,7 @@ export async function getNFTsWithAcquisition(
                 symbol: null,
                 date: eventDate,
                 type: isMint ? 'mint' : 'transfer',
+                txHash: transferEvent.transaction || null,
               })
             }
           }
@@ -437,6 +443,7 @@ export async function getNFTsWithAcquisition(
         acquisitionSymbol: acquisition?.symbol || null,
         acquisitionDate: acquisition?.date || null,
         acquisitionType: acquisition?.type || 'unknown',
+        acquisitionTxHash: acquisition?.txHash || null,
       }
     }
   )
