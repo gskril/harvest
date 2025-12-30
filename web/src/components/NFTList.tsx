@@ -443,7 +443,7 @@ export function NFTList() {
             </CardTitle>
             <CardDescription>
               Sell your NFTs to the Harvest contract for 1 gwei each. Sorted by
-              acquisition date (oldest first).
+              acquisition type, then date.
             </CardDescription>
           </div>
           <Button
