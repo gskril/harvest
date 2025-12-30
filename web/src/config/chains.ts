@@ -8,15 +8,14 @@ import type { Chain } from 'wagmi/chains'
  * 1. Import the chain from 'wagmi/chains'
  * 2. Add an entry to SUPPORTED_CHAINS with the chain config
  *
- * The Harvest contract is deployed at the same address on all chains:
- * 0x88bcea869a1aaa637d2d53be744172ab601c5e03
+ * The Harvest contract is deployed at the same address on all chains
  */
 
 export interface ChainConfig {
   /** The wagmi chain object */
   chain: Chain
-  /** Alchemy network identifier for API calls */
-  alchemyNetwork: string
+  /** OpenSea chain identifier for API calls */
+  openseaChain: string
   /** Block explorer URL */
   blockExplorer: string
   /** Whether Harvest contract is deployed on this chain */
@@ -31,14 +30,14 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
   // Ethereum Mainnet
   [mainnet.id]: {
     chain: mainnet,
-    alchemyNetwork: 'eth-mainnet',
+    openseaChain: 'ethereum',
     blockExplorer: 'https://etherscan.io',
     harvestDeployed: true,
   },
   // Base
   [base.id]: {
     chain: base,
-    alchemyNetwork: 'base-mainnet',
+    openseaChain: 'base',
     blockExplorer: 'https://basescan.org',
     harvestDeployed: true,
   },
@@ -50,21 +49,14 @@ export const getChains = (): [Chain, ...Chain[]] => {
   return chains as [Chain, ...Chain[]]
 }
 
-/** Get chains where Harvest is deployed */
-export const getHarvestChains = (): Chain[] => {
-  return Object.values(SUPPORTED_CHAINS)
-    .filter((c) => c.harvestDeployed)
-    .map((c) => c.chain)
-}
-
 /** Get chain config by chain ID */
 export const getChainConfig = (chainId: number): ChainConfig | undefined => {
   return SUPPORTED_CHAINS[chainId]
 }
 
-/** Get Alchemy network name for a chain ID */
-export const getAlchemyNetwork = (chainId: number): string => {
-  return SUPPORTED_CHAINS[chainId]?.alchemyNetwork || 'eth-mainnet'
+/** Get OpenSea chain identifier for a chain ID */
+export const getOpenseaChain = (chainId: number): string | undefined => {
+  return SUPPORTED_CHAINS[chainId]?.openseaChain
 }
 
 /** Get block explorer URL for a chain ID */
@@ -75,24 +67,4 @@ export const getBlockExplorer = (chainId: number): string => {
 /** Check if Harvest is deployed on a chain */
 export const isHarvestDeployed = (chainId: number): boolean => {
   return SUPPORTED_CHAINS[chainId]?.harvestDeployed ?? false
-}
-
-export const getOpenseaUrl = (
-  chainId: number,
-  contractAddress: string,
-  tokenId?: string
-) => {
-  const chainConfig = getChainConfig(chainId)
-  if (!chainConfig) {
-    throw new Error(`Chain ${chainId} not supported`)
-  }
-  const chainName = chainConfig.chain.name.toLowerCase()
-
-  if (!tokenId) {
-    // ERC20
-    return `https://opensea.io/token/${chainName}/${contractAddress}`
-  }
-
-  // NFT
-  return `https://opensea.io/item/${chainName}/${contractAddress}/${tokenId}`
 }

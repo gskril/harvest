@@ -35,7 +35,7 @@ export function HarvestInfo({ className }: { className?: string }) {
           <Wallet className="h-5 w-5" />
           Harvest Contract
         </CardTitle>
-        <CardDescription>Sell your tokens for 1 gwei</CardDescription>
+        <CardDescription>Sell your NFTs for 1 gwei</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -94,19 +94,19 @@ export function HarvestInfo({ className }: { className?: string }) {
                 <Badge variant="outline" className="shrink-0">
                   1
                 </Badge>
-                <p>Approve the Harvest contract to transfer your token</p>
+                <p>Approve the Harvest contract to transfer your NFT</p>
               </div>
               <div className="flex items-start gap-2">
                 <Badge variant="outline" className="shrink-0">
                   2
                 </Badge>
-                <p>Call the sell function (ERC20, ERC721, or ERC1155)</p>
+                <p>Call the sell function</p>
               </div>
               <div className="flex items-start gap-2">
                 <Badge variant="outline" className="shrink-0">
                   3
                 </Badge>
-                <p>Receive 1 gwei for your token (contract must have ETH)</p>
+                <p>Receive 1 gwei in exchange for your NFT</p>
               </div>
             </div>
           </div>

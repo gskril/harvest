@@ -142,58 +142,6 @@ export const HARVEST_ABI = [
   },
 ] as const
 
-// ERC20 ABI for approval
-export const ERC20_ABI = [
-  {
-    type: 'function',
-    name: 'approve',
-    inputs: [
-      { name: 'spender', type: 'address', internalType: 'address' },
-      { name: 'amount', type: 'uint256', internalType: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool', internalType: 'bool' }],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'function',
-    name: 'allowance',
-    inputs: [
-      { name: 'owner', type: 'address', internalType: 'address' },
-      { name: 'spender', type: 'address', internalType: 'address' },
-    ],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'balanceOf',
-    inputs: [{ name: 'account', type: 'address', internalType: 'address' }],
-    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'decimals',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint8', internalType: 'uint8' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'symbol',
-    inputs: [],
-    outputs: [{ name: '', type: 'string', internalType: 'string' }],
-    stateMutability: 'view',
-  },
-  {
-    type: 'function',
-    name: 'name',
-    inputs: [],
-    outputs: [{ name: '', type: 'string', internalType: 'string' }],
-    stateMutability: 'view',
-  },
-] as const
-
 // ERC721 ABI for approval
 export const ERC721_ABI = [
   {
@@ -270,6 +218,5 @@ export const ERC1155_ABI = [
 ] as const
 
 // Harvest contract address deployed on Ethereum Mainnet
-export const HARVEST_ADDRESS: `0x${string}` =
-  (import.meta.env.VITE_HARVEST_ADDRESS as `0x${string}`) ||
-  '0x88BCEa869A1Aaa637d2d53BE744172aB601c5e03'
+export const HARVEST_ADDRESS =
+  '0x88BCEa869A1Aaa637d2d53BE744172aB601c5e03' as const

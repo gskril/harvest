@@ -29,7 +29,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getOpenseaUrl, isHarvestDeployed } from '@/config/chains'
+import { isHarvestDeployed } from '@/config/chains'
 import {
   ERC721_ABI,
   ERC1155_ABI,
@@ -37,35 +37,47 @@ import {
   HARVEST_ADDRESS,
 } from '@/contracts/harvest'
 import { useNFTs } from '@/hooks/useNFTs'
-import { type AlchemyNFT } from '@/lib/alchemy'
+import { type NFTWithAcquisition } from '@/lib/opensea'
 import { cn } from '@/lib/utils'
 
 interface NFTItemProps {
-  nft: AlchemyNFT
-  onSell: (nft: AlchemyNFT, amount?: string) => void
+  nft: NFTWithAcquisition
+  onSell: (nft: NFTWithAcquisition, amount?: string) => void
   isSelling: boolean
+}
+
+function formatAcquisitionDate(date: Date | null): string {
+  if (!date) return 'Unknown'
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function getAcquisitionLabel(nft: NFTWithAcquisition): string {
+  switch (nft.acquisitionType) {
+    case 'purchase':
+      return `Bought for ${nft.acquisitionPrice} ${nft.acquisitionSymbol}`
+    case 'mint':
+      return 'Minted'
+    case 'transfer':
+      return 'Received'
+    default:
+      return 'Unknown'
+  }
 }
 
 function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
   const [amount, setAmount] = useState('1')
   const [imgError, setImgError] = useState(false)
   const isERC1155 = nft.tokenType === 'ERC1155'
-  const chainId = useChainId()
-  const openseaUrl = getOpenseaUrl(chainId, nft.contract.address, nft.tokenId)
 
-  const imageUrl =
-    nft.image?.thumbnailUrl ||
-    nft.image?.cachedUrl ||
-    nft.image?.pngUrl ||
-    nft.raw?.metadata?.image ||
-    nft.contract.openSeaMetadata?.imageUrl
+  const imageUrl = nft.display_image_url || nft.image_url
 
-  const nftName = nft.name || nft.raw?.metadata?.name || `#${nft.tokenId}`
+  const nftName = nft.name || `#${nft.identifier}`
 
-  const collectionName =
-    nft.contract.name ||
-    nft.contract.openSeaMetadata?.collectionName ||
-    'Unknown Collection'
+  const collectionName = nft.collection || 'Unknown Collection'
 
   return (
     <div className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50">
@@ -84,7 +96,7 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
         )}
         <div>
           <a
-            href={openseaUrl}
+            href={nft.opensea_url}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
@@ -92,7 +104,7 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
               !nftName.includes(' ') && 'max-w-[20ch] truncate sm:max-w-[40ch]'
             )}
           >
-            {nftName.length > 60 ? `${nftName.slice(0, 60)}…` : nftName}
+            {nftName.length > 60 ? `${nftName.slice(0, 60)}...` : nftName}
           </a>
           <p
             className={cn(
@@ -103,12 +115,24 @@ function NFTItem({ nft, onSell, isSelling }: NFTItemProps) {
           >
             {collectionName}
           </p>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             <Badge variant={isERC1155 ? 'default' : 'secondary'}>
               {nft.tokenType}
             </Badge>
-            {isERC1155 && nft.balance && (
-              <Badge variant="outline">Balance: {nft.balance}</Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                nft.acquisitionType === 'purchase' && 'border-green-500/50 text-green-600',
+                nft.acquisitionType === 'mint' && 'border-blue-500/50 text-blue-600',
+                nft.acquisitionType === 'transfer' && 'border-purple-500/50 text-purple-600'
+              )}
+            >
+              {getAcquisitionLabel(nft)}
+            </Badge>
+            {nft.acquisitionDate && (
+              <span className="text-xs text-muted-foreground">
+                {formatAcquisitionDate(nft.acquisitionDate)}
+              </span>
             )}
           </div>
         </div>
@@ -151,7 +175,7 @@ export function NFTList() {
   const [sellingNFT, setSellingNFT] = useState<string | null>(null)
   const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle')
   const [pendingSell, setPendingSell] = useState<{
-    nft: AlchemyNFT
+    nft: NFTWithAcquisition
     amount?: string
   } | null>(null)
   const harvestDeployed = isHarvestDeployed(chainId)
@@ -240,10 +264,10 @@ export function NFTList() {
     resetSell,
   ])
 
-  const handleSell = async (nft: AlchemyNFT, amount?: string) => {
+  const handleSell = async (nft: NFTWithAcquisition, amount?: string) => {
     if (!address || !harvestDeployed) return
 
-    const nftKey = `${nft.contract.address}-${nft.tokenId}`
+    const nftKey = `${nft.contract}-${nft.identifier}`
     setSellingNFT(nftKey)
     setPendingSell({ nft, amount })
 
@@ -254,10 +278,10 @@ export function NFTList() {
       if (nft.tokenType === 'ERC721') {
         // Check getApproved for this specific token
         const approved = await readContract(config, {
-          address: nft.contract.address as `0x${string}`,
+          address: nft.contract as `0x${string}`,
           abi: ERC721_ABI,
           functionName: 'getApproved',
-          args: [BigInt(nft.tokenId)],
+          args: [BigInt(nft.identifier)],
           chainId,
         })
         if (approved === HARVEST_ADDRESS) {
@@ -265,7 +289,7 @@ export function NFTList() {
         } else {
           // Also check isApprovedForAll
           const approvedForAll = await readContract(config, {
-            address: nft.contract.address as `0x${string}`,
+            address: nft.contract as `0x${string}`,
             abi: ERC721_ABI,
             functionName: 'isApprovedForAll',
             args: [address, HARVEST_ADDRESS],
@@ -276,7 +300,7 @@ export function NFTList() {
       } else {
         // For ERC1155, check isApprovedForAll
         const approvedForAll = await readContract(config, {
-          address: nft.contract.address as `0x${string}`,
+          address: nft.contract as `0x${string}`,
           abi: ERC1155_ABI,
           functionName: 'isApprovedForAll',
           args: [address, HARVEST_ADDRESS],
@@ -295,7 +319,7 @@ export function NFTList() {
             address: HARVEST_ADDRESS,
             abi: HARVEST_ABI,
             functionName: 'sellErc721',
-            args: [nft.contract.address as `0x${string}`, BigInt(nft.tokenId)],
+            args: [nft.contract as `0x${string}`, BigInt(nft.identifier)],
             chainId,
           })
         } else {
@@ -304,8 +328,8 @@ export function NFTList() {
             abi: HARVEST_ABI,
             functionName: 'sellErc1155',
             args: [
-              nft.contract.address as `0x${string}`,
-              BigInt(nft.tokenId),
+              nft.contract as `0x${string}`,
+              BigInt(nft.identifier),
               BigInt(amount || '1'),
             ],
             chainId,
@@ -317,15 +341,15 @@ export function NFTList() {
 
         if (nft.tokenType === 'ERC721') {
           writeApprove({
-            address: nft.contract.address as `0x${string}`,
+            address: nft.contract as `0x${string}`,
             abi: ERC721_ABI,
             functionName: 'approve',
-            args: [HARVEST_ADDRESS, BigInt(nft.tokenId)],
+            args: [HARVEST_ADDRESS, BigInt(nft.identifier)],
             chainId,
           })
         } else {
           writeApprove({
-            address: nft.contract.address as `0x${string}`,
+            address: nft.contract as `0x${string}`,
             abi: ERC1155_ABI,
             functionName: 'setApprovalForAll',
             args: [HARVEST_ADDRESS, true],
@@ -357,7 +381,7 @@ export function NFTList() {
         address: HARVEST_ADDRESS,
         abi: HARVEST_ABI,
         functionName: 'sellErc721',
-        args: [nft.contract.address as `0x${string}`, BigInt(nft.tokenId)],
+        args: [nft.contract as `0x${string}`, BigInt(nft.identifier)],
         chainId,
       })
     } else {
@@ -366,8 +390,8 @@ export function NFTList() {
         abi: HARVEST_ABI,
         functionName: 'sellErc1155',
         args: [
-          nft.contract.address as `0x${string}`,
-          BigInt(nft.tokenId),
+          nft.contract as `0x${string}`,
+          BigInt(nft.identifier),
           BigInt(amount || '1'),
         ],
         chainId,
@@ -402,7 +426,8 @@ export function NFTList() {
               )}
             </CardTitle>
             <CardDescription>
-              Sell your NFTs to the Harvest contract for 1 gwei each
+              Sell your NFTs to the Harvest contract for 1 gwei each. Sorted by
+              acquisition date (oldest first).
             </CardDescription>
           </div>
           <Button
@@ -450,7 +475,7 @@ export function NFTList() {
             <ImageIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
             <p>No NFTs found</p>
             <p className="mt-2 text-sm">
-              Make sure you have the Alchemy API key configured
+              Make sure you have the OpenSea API key configured
             </p>
           </div>
         ) : !harvestDeployed ? (
@@ -466,7 +491,7 @@ export function NFTList() {
               <div className="space-y-3 opacity-60">
                 {nfts.map((nft) => (
                   <NFTItem
-                    key={`${nft.contract.address}-${nft.tokenId}`}
+                    key={`${nft.contract}-${nft.identifier}`}
                     nft={nft}
                     onSell={() => {}}
                     isSelling={false}
@@ -479,11 +504,11 @@ export function NFTList() {
           <div className="space-y-3">
             {nfts.map((nft) => (
               <NFTItem
-                key={`${nft.contract.address}-${nft.tokenId}`}
+                key={`${nft.contract}-${nft.identifier}`}
                 nft={nft}
                 onSell={handleSell}
                 isSelling={
-                  sellingNFT === `${nft.contract.address}-${nft.tokenId}`
+                  sellingNFT === `${nft.contract}-${nft.identifier}`
                 }
               />
             ))}

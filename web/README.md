@@ -2,12 +2,16 @@
 
 A single page application for interacting with the [Harvest smart contract](../contracts/README.md). Users can connect their Ethereum wallet, view their tokens and NFTs, and sell them to the Harvest contract for 1 gwei each.
 
+> [!WARNING]
+> This web app is nearly 100% vibe coded. Use with caution.
+
 ## Prerequisites
 
 - Node.js 22+
 - bun 1+
 - A WalletConnect Project ID (get one from [Reown](https://reown.com/))
 - An Alchemy API Key (get one at [Alchemy](https://www.alchemy.com/))
+- An OpenSea API Key (get one at [OpenSea](https://opensea.io/settings/developer))
 
 ## Development
 
