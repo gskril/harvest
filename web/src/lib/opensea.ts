@@ -1,6 +1,6 @@
 // OpenSea API Types and Helpers
-import { batchGetTransactionValues, weiToEth } from '@/lib/alchemy'
 import { getOpenseaChain } from '@/config/chains'
+import { batchGetTransactionValues, weiToEth } from '@/lib/alchemy'
 
 export interface OpenSeaNFT {
   identifier: string
@@ -127,7 +127,11 @@ export async function getNFTsForOwner(
     )
 
     if (!response.ok) {
-      console.error('OpenSea API error:', response.status, await response.text())
+      console.error(
+        'OpenSea API error:',
+        response.status,
+        await response.text()
+      )
       return { nfts: [], next: null }
     }
 
@@ -288,7 +292,11 @@ function processEventsForAcquisition(
         const eventDate = new Date(saleEvent.event_timestamp * 1000)
 
         // Sales always take priority - use if no existing OR existing is not a purchase OR this is more recent
-        if (!existingAcq || existingAcq.type !== 'purchase' || eventDate > existingAcq.date) {
+        if (
+          !existingAcq ||
+          existingAcq.type !== 'purchase' ||
+          eventDate > existingAcq.date
+        ) {
           // Calculate price in human-readable format
           const priceInUnits =
             Number(saleEvent.payment.quantity) /
@@ -306,16 +314,22 @@ function processEventsForAcquisition(
     } else if (event.event_type === 'transfer') {
       const transferEvent = event as OpenSeaTransferEvent
       // Count if user is the recipient
-      if (transferEvent.to_address.toLowerCase() === ownerAddress.toLowerCase()) {
+      if (
+        transferEvent.to_address.toLowerCase() === ownerAddress.toLowerCase()
+      ) {
         const existingAcq = acquisitionMap.get(nftKey)
         const eventDate = new Date(transferEvent.event_timestamp * 1000)
 
         // Only use transfer if we don't have a purchase event
         // (sales and transfers happen together, sale should win)
-        if (!existingAcq || (existingAcq.type !== 'purchase' && eventDate > existingAcq.date)) {
+        if (
+          !existingAcq ||
+          (existingAcq.type !== 'purchase' && eventDate > existingAcq.date)
+        ) {
           // Check if this is a mint (from zero address)
           const isMint =
-            transferEvent.from_address === '0x0000000000000000000000000000000000000000'
+            transferEvent.from_address ===
+            '0x0000000000000000000000000000000000000000'
 
           acquisitionMap.set(nftKey, {
             price: null,
@@ -333,7 +347,9 @@ function processEventsForAcquisition(
 }
 
 // Sort priority: purchase (0) > mint (1) > transfer (2) > unknown (3)
-function getAcquisitionTypePriority(type: NFTWithAcquisition['acquisitionType']): number {
+function getAcquisitionTypePriority(
+  type: NFTWithAcquisition['acquisitionType']
+): number {
   switch (type) {
     case 'purchase':
       return 0
@@ -392,7 +408,11 @@ export async function getNFTsWithAcquisition(
             const eventDate = new Date(saleEvent.event_timestamp * 1000)
 
             // Sales always take priority
-            if (!existingAcq || existingAcq.type !== 'purchase' || eventDate > existingAcq.date) {
+            if (
+              !existingAcq ||
+              existingAcq.type !== 'purchase' ||
+              eventDate > existingAcq.date
+            ) {
               const priceInUnits =
                 Number(saleEvent.payment.quantity) /
                 Math.pow(10, saleEvent.payment.decimals)
@@ -408,14 +428,20 @@ export async function getNFTsWithAcquisition(
           }
         } else if (event.event_type === 'transfer') {
           const transferEvent = event as OpenSeaTransferEvent
-          if (transferEvent.to_address.toLowerCase() === address.toLowerCase()) {
+          if (
+            transferEvent.to_address.toLowerCase() === address.toLowerCase()
+          ) {
             const existingAcq = acquisitionMap.get(nftKey)
             const eventDate = new Date(transferEvent.event_timestamp * 1000)
 
             // Only use transfer if we don't have a purchase
-            if (!existingAcq || (existingAcq.type !== 'purchase' && eventDate > existingAcq.date)) {
+            if (
+              !existingAcq ||
+              (existingAcq.type !== 'purchase' && eventDate > existingAcq.date)
+            ) {
               const isMint =
-                transferEvent.from_address === '0x0000000000000000000000000000000000000000'
+                transferEvent.from_address ===
+                '0x0000000000000000000000000000000000000000'
 
               acquisitionMap.set(nftKey, {
                 price: null,

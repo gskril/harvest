@@ -11,8 +11,6 @@ export function useNFTs() {
     queryKey: ['nfts', address, chainId],
     queryFn: () => getNFTsWithAcquisition(address!, chainId),
     enabled: !!address && isConnected,
-    staleTime: 30_000, // Consider data fresh for 30 seconds
-    refetchOnWindowFocus: false,
   })
 
   return {

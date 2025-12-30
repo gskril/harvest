@@ -50,7 +50,9 @@ export async function batchGetTransactionValues(
     const batchResponse = await response.json()
 
     // Handle both array response (batch) and single response
-    const responses = Array.isArray(batchResponse) ? batchResponse : [batchResponse]
+    const responses = Array.isArray(batchResponse)
+      ? batchResponse
+      : [batchResponse]
 
     // Map results by id to preserve order
     const resultsById = new Map<number, string | null>()
