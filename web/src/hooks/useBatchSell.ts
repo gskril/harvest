@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { encodeFunctionData } from 'viem'
 import {
   useAccount,
+  useCapabilities,
   useChainId,
   useConfig,
   useSendCalls,
@@ -32,6 +33,10 @@ interface Call {
 }
 
 interface UseBatchSellReturn {
+  /** Whether the wallet supports batch calls (EIP-5792) */
+  supportsBatchCalls: boolean
+  /** Whether we're still checking wallet capabilities */
+  isCheckingCapabilities: boolean
   /** Current status of the batch operation */
   status: BatchSellStatus
   /** Error message if status is 'error' */
@@ -53,6 +58,27 @@ export function useBatchSell(): UseBatchSellReturn {
   const [error, setError] = useState<string | null>(null)
   const [processingCount, setProcessingCount] = useState(0)
   const [batchId, setBatchId] = useState<string | null>(null)
+
+  // Check wallet capabilities for EIP-5792 support (wallet_getCapabilities)
+  const {
+    data: capabilities,
+    isLoading: isCheckingCapabilities,
+    error: capabilitiesError,
+  } = useCapabilities()
+
+  // Determine if wallet supports batch calls on the current chain
+  const supportsBatchCalls = useMemo(() => {
+    // If there was an error fetching capabilities, wallet doesn't support EIP-5792
+    if (capabilitiesError) return false
+    if (!capabilities) return false
+
+    // Check if the current chain has any capabilities (indicates EIP-5792 support)
+    const chainCapabilities = capabilities[chainId]
+    if (!chainCapabilities) return false
+
+    // Wallet returned capabilities for this chain, so it supports sendCalls
+    return true
+  }, [capabilities, chainId, capabilitiesError])
 
   // useSendCalls for batching transactions
   const {
@@ -241,6 +267,8 @@ export function useBatchSell(): UseBatchSellReturn {
   )
 
   return {
+    supportsBatchCalls,
+    isCheckingCapabilities,
     status,
     error,
     processingCount,

@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
   ImageIcon,
-  Info,
   Loader2,
   RefreshCw,
   Send,
@@ -248,6 +247,8 @@ export function NFTList() {
 
   // Batch sell hook
   const {
+    supportsBatchCalls,
+    isCheckingCapabilities,
     status: batchStatus,
     error: batchError,
     processingCount,
@@ -578,27 +579,29 @@ export function NFTList() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {harvestDeployed && nfts.length > 0 && !selectionMode && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectionMode(true)}
-                      disabled={isLoading}
-                    >
-                      Batch Select
-                      <Info className="ml-1 h-3 w-3 text-muted-foreground" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-xs">
-                    <p>
-                      Select multiple NFTs to sell them in a single transaction.
-                      Requires a wallet that supports EIP-5792 (smart accounts
-                      or ERC-7702 delegated accounts).
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              {harvestDeployed &&
+                nfts.length > 0 &&
+                !selectionMode &&
+                !isCheckingCapabilities &&
+                supportsBatchCalls && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectionMode(true)}
+                        disabled={isLoading}
+                      >
+                        Batch Select
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p>
+                        Select multiple NFTs to sell them in a single
+                        transaction.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               <Button
                 variant="outline"
                 size="icon"
