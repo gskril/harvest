@@ -1,4 +1,4 @@
-import { AlertTriangle, ExternalLink, Wallet } from 'lucide-react'
+import { AlertTriangle, ExternalLink, Info, Wallet } from 'lucide-react'
 import { formatEther } from 'viem'
 import { useBalance, useChainId } from 'wagmi'
 
@@ -107,6 +107,25 @@ export function HarvestInfo({ className }: { className?: string }) {
                   3
                 </Badge>
                 <p>Receive 1 gwei in exchange for your NFT</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="mt-2 rounded-lg border border-muted bg-muted/30 p-3">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <p>
+                  <strong className="text-foreground/80">Disclaimer:</strong>{' '}
+                  This tool is not tax, legal, or financial advice. Selling NFTs
+                  may have tax implications. Consult a qualified professional
+                  before making any decisions.
+                </p>
+                <p>
+                  This software is provided "as is" without warranty. Use at
+                  your own risk.
+                </p>
               </div>
             </div>
           </div>

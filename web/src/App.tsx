@@ -1,5 +1,5 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { Wheat } from 'lucide-react'
+import { Github, Wheat } from 'lucide-react'
 import { useAccount } from 'wagmi'
 
 import { HarvestInfo } from '@/components/HarvestInfo'
@@ -17,7 +17,18 @@ function App() {
             <Wheat className="h-8 w-8 text-primary" />
             <h1 className="text-xl font-bold">Harvest</h1>
           </div>
-          <ConnectButton showBalance={false} />
+          <div className="flex items-center gap-4">
+            <a
+              href="https://github.com/gskril/harvest"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              title="View source on GitHub"
+            >
+              <Github className="h-5 w-5" />
+            </a>
+            <ConnectButton showBalance={false} />
+          </div>
         </div>
       </header>
 
