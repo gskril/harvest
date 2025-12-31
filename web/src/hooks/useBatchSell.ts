@@ -11,12 +11,8 @@ import {
 } from 'wagmi'
 import { readContract } from 'wagmi/actions'
 
-import {
-  ERC721_ABI,
-  ERC1155_ABI,
-  HARVEST_ABI,
-  HARVEST_ADDRESS,
-} from '@/contracts/harvest'
+import { getHarvestAddress } from '@/config/chains'
+import { ERC721_ABI, ERC1155_ABI, HARVEST_ABI } from '@/contracts/harvest'
 import type { NFTWithAcquisition } from '@/lib/opensea'
 
 export type BatchSellStatus =
@@ -151,6 +147,13 @@ export function useBatchSell(): UseBatchSellReturn {
     async (nfts: NFTWithAcquisition[]) => {
       if (!address || nfts.length === 0) return
 
+      const harvestAddress = getHarvestAddress(chainId)
+      if (!harvestAddress) {
+        setError('Harvest not deployed on this chain')
+        setStatus('error')
+        return
+      }
+
       setStatus('preparing')
       setError(null)
       setProcessingCount(nfts.length)
@@ -176,14 +179,14 @@ export function useBatchSell(): UseBatchSellReturn {
                 chainId,
               })
 
-              if (approved === HARVEST_ADDRESS) {
+              if (approved === harvestAddress) {
                 isApproved = true
               } else {
                 const approvedForAll = await readContract(config, {
                   address: contractAddress,
                   abi: ERC721_ABI,
                   functionName: 'isApprovedForAll',
-                  args: [address, HARVEST_ADDRESS],
+                  args: [address, harvestAddress],
                   chainId,
                 })
                 isApproved = approvedForAll
@@ -198,7 +201,7 @@ export function useBatchSell(): UseBatchSellReturn {
               const approveData = encodeFunctionData({
                 abi: ERC721_ABI,
                 functionName: 'approve',
-                args: [HARVEST_ADDRESS, tokenId],
+                args: [harvestAddress, tokenId],
               })
               calls.push({ to: contractAddress, data: approveData })
             }
@@ -209,7 +212,7 @@ export function useBatchSell(): UseBatchSellReturn {
               functionName: 'sellErc721',
               args: [contractAddress, tokenId],
             })
-            calls.push({ to: HARVEST_ADDRESS, data: sellData })
+            calls.push({ to: harvestAddress, data: sellData })
           } else {
             // ERC1155
             let isApproved = false
@@ -219,7 +222,7 @@ export function useBatchSell(): UseBatchSellReturn {
                 address: contractAddress,
                 abi: ERC1155_ABI,
                 functionName: 'isApprovedForAll',
-                args: [address, HARVEST_ADDRESS],
+                args: [address, harvestAddress],
                 chainId,
               })
               isApproved = approvedForAll
@@ -232,7 +235,7 @@ export function useBatchSell(): UseBatchSellReturn {
               const approveData = encodeFunctionData({
                 abi: ERC1155_ABI,
                 functionName: 'setApprovalForAll',
-                args: [HARVEST_ADDRESS, true],
+                args: [harvestAddress, true],
               })
               calls.push({ to: contractAddress, data: approveData })
             }
@@ -243,7 +246,7 @@ export function useBatchSell(): UseBatchSellReturn {
               functionName: 'sellErc1155',
               args: [contractAddress, tokenId, BigInt(1)],
             })
-            calls.push({ to: HARVEST_ADDRESS, data: sellData })
+            calls.push({ to: harvestAddress, data: sellData })
           }
         }
 

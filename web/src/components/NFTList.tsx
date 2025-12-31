@@ -36,13 +36,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { getBlockExplorer, isHarvestDeployed } from '@/config/chains'
 import {
-  ERC721_ABI,
-  ERC1155_ABI,
-  HARVEST_ABI,
-  HARVEST_ADDRESS,
-} from '@/contracts/harvest'
+  getBlockExplorer,
+  getHarvestAddress,
+  getOpenseaChain,
+  isHarvestDeployed,
+} from '@/config/chains'
+import { ERC721_ABI, ERC1155_ABI, HARVEST_ABI } from '@/contracts/harvest'
 import { useBatchSell } from '@/hooks/useBatchSell'
 import { useNFTs } from '@/hooks/useNFTs'
 import { type NFTWithAcquisition } from '@/lib/opensea'
@@ -82,6 +82,18 @@ function getAcquisitionLabel(nft: NFTWithAcquisition): string {
     default:
       return 'Unknown'
   }
+}
+
+export function NFTList() {
+  const chainId = useChainId()
+  const openseaChain = getOpenseaChain(chainId)
+
+  // If no OpenSea support, show manual form
+  if (!openseaChain) {
+    return <ManualSellForm />
+  }
+
+  return <NFTListWithOpenSea />
 }
 
 function NFTItem({
@@ -226,7 +238,347 @@ function NFTItem({
   )
 }
 
-export function NFTList() {
+function ManualSellForm() {
+  const { address } = useAccount()
+  const chainId = useChainId()
+  const config = useConfig()
+  const harvestDeployed = isHarvestDeployed(chainId)
+  const harvestAddress = getHarvestAddress(chainId)
+
+  const [contractAddress, setContractAddress] = useState('')
+  const [tokenId, setTokenId] = useState('')
+  const [tokenType, setTokenType] = useState<'ERC721' | 'ERC1155'>('ERC721')
+  const [amount, setAmount] = useState('1')
+  const [step, setStep] = useState<'idle' | 'approving' | 'selling'>('idle')
+  const toastIdRef = useRef<string | null>(null)
+
+  const {
+    writeContract: writeApprove,
+    data: approveHash,
+    error: approveError,
+    reset: resetApprove,
+  } = useWriteContract()
+  const {
+    writeContract: writeSell,
+    data: sellHash,
+    error: sellError,
+    reset: resetSell,
+  } = useWriteContract()
+
+  const { isSuccess: isApproveSuccess, isError: isApproveError } =
+    useWaitForTransactionReceipt({ hash: approveHash })
+
+  const { isSuccess: isSellSuccess, isError: isSellError } =
+    useWaitForTransactionReceipt({ hash: sellHash })
+
+  const isValidAddress = contractAddress.match(/^0x[a-fA-F0-9]{40}$/)
+  const isValidTokenId = tokenId.length > 0 && !isNaN(Number(tokenId))
+  const isValidAmount =
+    tokenType === 'ERC721' || (amount.length > 0 && parseInt(amount) >= 1)
+  const canSell =
+    isValidAddress &&
+    isValidTokenId &&
+    isValidAmount &&
+    harvestDeployed &&
+    harvestAddress &&
+    step === 'idle'
+
+  // Show toast when step changes
+  useEffect(() => {
+    if (step === 'approving') {
+      toastIdRef.current = toast.loading('Approving NFT transfer...')
+    } else if (step === 'selling' && toastIdRef.current) {
+      toast.loading('Selling NFT...', { id: toastIdRef.current })
+    }
+  }, [step])
+
+  // Handle success
+  useEffect(() => {
+    if (isSellSuccess && step === 'selling') {
+      if (toastIdRef.current) {
+        toast.success('NFT sold successfully!', { id: toastIdRef.current })
+        toastIdRef.current = null
+      }
+      setStep('idle')
+      setContractAddress('')
+      setTokenId('')
+      setAmount('1')
+      resetApprove()
+      resetSell()
+    }
+  }, [isSellSuccess, step, resetApprove, resetSell])
+
+  // Handle errors
+  useEffect(() => {
+    const hasError = approveError || sellError || isApproveError || isSellError
+
+    if (hasError && step !== 'idle') {
+      const errorMessage =
+        approveError?.message || sellError?.message || 'Transaction failed'
+      const isUserRejection =
+        errorMessage.includes('User rejected') ||
+        errorMessage.includes('user rejected') ||
+        errorMessage.includes('User denied')
+
+      if (toastIdRef.current) {
+        toast.error(isUserRejection ? 'Transaction cancelled' : errorMessage, {
+          id: toastIdRef.current,
+        })
+        toastIdRef.current = null
+      }
+
+      setStep('idle')
+      resetApprove()
+      resetSell()
+    }
+  }, [
+    approveError,
+    sellError,
+    isApproveError,
+    isSellError,
+    step,
+    resetApprove,
+    resetSell,
+  ])
+
+  // When approval is successful, proceed to sell
+  useEffect(() => {
+    if (isApproveSuccess && step === 'approving' && harvestAddress) {
+      setStep('selling')
+
+      if (tokenType === 'ERC721') {
+        writeSell({
+          address: harvestAddress,
+          abi: HARVEST_ABI,
+          functionName: 'sellErc721',
+          args: [contractAddress as `0x${string}`, BigInt(tokenId)],
+          chainId,
+        })
+      } else {
+        writeSell({
+          address: harvestAddress,
+          abi: HARVEST_ABI,
+          functionName: 'sellErc1155',
+          args: [
+            contractAddress as `0x${string}`,
+            BigInt(tokenId),
+            BigInt(amount),
+          ],
+          chainId,
+        })
+      }
+    }
+  }, [
+    isApproveSuccess,
+    step,
+    harvestAddress,
+    tokenType,
+    contractAddress,
+    tokenId,
+    amount,
+    chainId,
+    writeSell,
+  ])
+
+  const handleSell = async () => {
+    if (!address || !harvestAddress || !canSell) return
+
+    try {
+      // Check if already approved
+      let isApproved = false
+      const nftContract = contractAddress as `0x${string}`
+
+      if (tokenType === 'ERC721') {
+        const approved = await readContract(config, {
+          address: nftContract,
+          abi: ERC721_ABI,
+          functionName: 'getApproved',
+          args: [BigInt(tokenId)],
+          chainId,
+        })
+        if (approved === harvestAddress) {
+          isApproved = true
+        } else {
+          const approvedForAll = await readContract(config, {
+            address: nftContract,
+            abi: ERC721_ABI,
+            functionName: 'isApprovedForAll',
+            args: [address, harvestAddress],
+            chainId,
+          })
+          isApproved = approvedForAll
+        }
+      } else {
+        const approvedForAll = await readContract(config, {
+          address: nftContract,
+          abi: ERC1155_ABI,
+          functionName: 'isApprovedForAll',
+          args: [address, harvestAddress],
+          chainId,
+        })
+        isApproved = approvedForAll
+      }
+
+      if (isApproved) {
+        setStep('selling')
+        toastIdRef.current = toast.loading('Selling NFT...')
+
+        if (tokenType === 'ERC721') {
+          writeSell({
+            address: harvestAddress,
+            abi: HARVEST_ABI,
+            functionName: 'sellErc721',
+            args: [nftContract, BigInt(tokenId)],
+            chainId,
+          })
+        } else {
+          writeSell({
+            address: harvestAddress,
+            abi: HARVEST_ABI,
+            functionName: 'sellErc1155',
+            args: [nftContract, BigInt(tokenId), BigInt(amount)],
+            chainId,
+          })
+        }
+      } else {
+        setStep('approving')
+
+        if (tokenType === 'ERC721') {
+          writeApprove({
+            address: nftContract,
+            abi: ERC721_ABI,
+            functionName: 'approve',
+            args: [harvestAddress, BigInt(tokenId)],
+            chainId,
+          })
+        } else {
+          writeApprove({
+            address: nftContract,
+            abi: ERC1155_ABI,
+            functionName: 'setApprovalForAll',
+            args: [harvestAddress, true],
+            chainId,
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error:', err)
+      toast.error('Failed to process NFT sale')
+      setStep('idle')
+    }
+  }
+
+  if (!address) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Sell NFT
+          </CardTitle>
+          <CardDescription>Connect your wallet to sell NFTs</CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Send className="h-5 w-5" />
+          Sell NFT
+        </CardTitle>
+        <CardDescription>
+          Enter the NFT details to sell it for 1 gwei
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Contract Address</label>
+            <Input
+              placeholder="0x..."
+              value={contractAddress}
+              onChange={(e) => setContractAddress(e.target.value)}
+              disabled={step !== 'idle'}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Token ID</label>
+            <Input
+              placeholder="1"
+              value={tokenId}
+              onChange={(e) => setTokenId(e.target.value)}
+              disabled={step !== 'idle'}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Token Type</label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={tokenType === 'ERC721' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTokenType('ERC721')}
+                disabled={step !== 'idle'}
+              >
+                ERC-721
+              </Button>
+              <Button
+                type="button"
+                variant={tokenType === 'ERC1155' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTokenType('ERC1155')}
+                disabled={step !== 'idle'}
+              >
+                ERC-1155
+              </Button>
+            </div>
+          </div>
+
+          {tokenType === 'ERC1155' && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Amount</label>
+              <Input
+                type="number"
+                placeholder="1"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                min="1"
+                disabled={step !== 'idle'}
+              />
+            </div>
+          )}
+
+          {!harvestDeployed && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-sm">Harvest is not deployed on this chain.</p>
+            </div>
+          )}
+
+          <Button className="w-full" onClick={handleSell} disabled={!canSell}>
+            {step !== 'idle' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            {step === 'approving'
+              ? 'Approving...'
+              : step === 'selling'
+                ? 'Selling...'
+                : 'Sell NFT'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function NFTListWithOpenSea() {
   const { nfts, isLoading, error, totalCount, refetch } = useNFTs()
   const { address } = useAccount()
   const chainId = useChainId()
@@ -409,8 +761,10 @@ export function NFTList() {
     batchStatus === 'pending' ||
     batchStatus === 'confirming'
 
+  const harvestAddress = getHarvestAddress(chainId)
+
   const handleSell = async (nft: NFTWithAcquisition, amount?: string) => {
-    if (!address || !harvestDeployed) return
+    if (!address || !harvestDeployed || !harvestAddress) return
 
     const nftKey = `${nft.contract}-${nft.identifier}`
     setSellingNFT(nftKey)
@@ -429,7 +783,7 @@ export function NFTList() {
           args: [BigInt(nft.identifier)],
           chainId,
         })
-        if (approved === HARVEST_ADDRESS) {
+        if (approved === harvestAddress) {
           isApproved = true
         } else {
           // Also check isApprovedForAll
@@ -437,7 +791,7 @@ export function NFTList() {
             address: nft.contract as `0x${string}`,
             abi: ERC721_ABI,
             functionName: 'isApprovedForAll',
-            args: [address, HARVEST_ADDRESS],
+            args: [address, harvestAddress],
             chainId,
           })
           isApproved = approvedForAll
@@ -448,7 +802,7 @@ export function NFTList() {
           address: nft.contract as `0x${string}`,
           abi: ERC1155_ABI,
           functionName: 'isApprovedForAll',
-          args: [address, HARVEST_ADDRESS],
+          args: [address, harvestAddress],
           chainId,
         })
         isApproved = approvedForAll
@@ -461,7 +815,7 @@ export function NFTList() {
 
         if (nft.tokenType === 'ERC721') {
           writeSell({
-            address: HARVEST_ADDRESS,
+            address: harvestAddress,
             abi: HARVEST_ABI,
             functionName: 'sellErc721',
             args: [nft.contract as `0x${string}`, BigInt(nft.identifier)],
@@ -469,7 +823,7 @@ export function NFTList() {
           })
         } else {
           writeSell({
-            address: HARVEST_ADDRESS,
+            address: harvestAddress,
             abi: HARVEST_ABI,
             functionName: 'sellErc1155',
             args: [
@@ -489,7 +843,7 @@ export function NFTList() {
             address: nft.contract as `0x${string}`,
             abi: ERC721_ABI,
             functionName: 'approve',
-            args: [HARVEST_ADDRESS, BigInt(nft.identifier)],
+            args: [harvestAddress, BigInt(nft.identifier)],
             chainId,
           })
         } else {
@@ -497,7 +851,7 @@ export function NFTList() {
             address: nft.contract as `0x${string}`,
             abi: ERC1155_ABI,
             functionName: 'setApprovalForAll',
-            args: [HARVEST_ADDRESS, true],
+            args: [harvestAddress, true],
             chainId,
           })
         }
@@ -518,13 +872,18 @@ export function NFTList() {
 
   // When approval is successful, proceed to sell
   useEffect(() => {
-    if (isApproveSuccess && step === 'approving' && pendingSell) {
+    if (
+      isApproveSuccess &&
+      step === 'approving' &&
+      pendingSell &&
+      harvestAddress
+    ) {
       const { nft, amount } = pendingSell
       setStep('selling')
 
       if (nft.tokenType === 'ERC721') {
         writeSell({
-          address: HARVEST_ADDRESS,
+          address: harvestAddress,
           abi: HARVEST_ABI,
           functionName: 'sellErc721',
           args: [nft.contract as `0x${string}`, BigInt(nft.identifier)],
@@ -532,7 +891,7 @@ export function NFTList() {
         })
       } else {
         writeSell({
-          address: HARVEST_ADDRESS,
+          address: harvestAddress,
           abi: HARVEST_ABI,
           functionName: 'sellErc1155',
           args: [
@@ -544,7 +903,7 @@ export function NFTList() {
         })
       }
     }
-  }, [isApproveSuccess, step, pendingSell, chainId, writeSell])
+  }, [isApproveSuccess, step, pendingSell, chainId, writeSell, harvestAddress])
 
   if (!address) {
     return (

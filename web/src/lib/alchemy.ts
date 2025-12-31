@@ -5,6 +5,7 @@ const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY || ''
 // Map chain IDs to Alchemy network names
 const ALCHEMY_NETWORKS: Record<number, string> = {
   1: 'eth-mainnet',
+  324: 'zksync-mainnet',
   8453: 'base-mainnet',
 }
 

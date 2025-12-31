@@ -13,18 +13,21 @@ import {
 import {
   getBlockExplorer,
   getChainConfig,
+  getHarvestAddress,
   isHarvestDeployed,
 } from '@/config/chains'
-import { HARVEST_ADDRESS } from '@/contracts/harvest'
 
 export function HarvestInfo({ className }: { className?: string }) {
   const chainId = useChainId()
+  const harvestAddress = getHarvestAddress(chainId)
   const { data: balance } = useBalance({
-    address: HARVEST_ADDRESS,
+    address: harvestAddress,
   })
 
   const explorerUrl = getBlockExplorer(chainId)
-  const contractUrl = `${explorerUrl}/address/${HARVEST_ADDRESS}`
+  const contractUrl = harvestAddress
+    ? `${explorerUrl}/address/${harvestAddress}`
+    : explorerUrl
   const chainConfig = getChainConfig(chainId)
   const isDeployed = isHarvestDeployed(chainId)
 
@@ -63,7 +66,7 @@ export function HarvestInfo({ className }: { className?: string }) {
               rel="noopener noreferrer"
               className="flex items-center gap-2 font-mono text-sm text-primary hover:underline"
             >
-              {HARVEST_ADDRESS.slice(0, 6)}...{HARVEST_ADDRESS.slice(-4)}
+              {harvestAddress?.slice(0, 6)}...{harvestAddress?.slice(-4)}
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>

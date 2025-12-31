@@ -216,7 +216,3 @@ export const ERC1155_ABI = [
     stateMutability: 'view',
   },
 ] as const
-
-// Harvest contract address deployed on Ethereum Mainnet
-export const HARVEST_ADDRESS =
-  '0x88BCEa869A1Aaa637d2d53BE744172aB601c5e03' as const
